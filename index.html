@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novel View Synthesis as Video Completion</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+<!-- ==================== TITLE ==================== -->
+<section class="hero">
+  <div class="hero-body pb-2">
+    <div class="container is-max-desktop has-text-centered">
+      <h1 class="title is-2 publication-title">Novel View Synthesis as Video Completion</h1>
+
+      <!-- Authors -->
+      <div class="is-size-5 publication-authors" style="margin-top:0.8rem;">
+        <span class="author-block">
+          <a href="https://szqwu.github.io/" target="_blank">Qi Wu</a>,
+        </span>
+        <span class="author-block">
+          <a href="https://www.khiemvuong.com/" target="_blank">Khiem Vuong</a>,
+        </span>
+        <span class="author-block">
+          <a href="https://msjeon.me/" target="_blank">Minsik Jeon</a>,
+        </span>
+        <span class="author-block">
+          <a href="https://www.cs.cmu.edu/~srinivas/" target="_blank">Srinivasa Narasimhan</a>,
+        </span>
+        <span class="author-block">
+          <a href="https://www.cs.cmu.edu/~deva/" target="_blank">Deva Ramanan</a>
+        </span>
+      </div>
+
+      <!-- Affiliation -->
+      <div class="is-size-6 publication-authors has-text-grey-dark" style="margin-top:0.4rem;">
+        <span class="author-block">Carnegie Mellon University</span>
+      </div>
+
+      <!-- Buttons -->
+      <div class="column has-text-centered" style="margin-top:1rem;">
+        <div class="publication-links">
+          <span class="link-block">
+            <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank"
+               class="button is-normal is-rounded is-dark">
+              <span class="icon"><i class="ai ai-arxiv"></i></span>
+              <span>arXiv</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a class="button is-normal is-rounded is-dark" disabled title="Code coming soon">
+              <span class="icon"><i class="fab fa-github"></i></span>
+              <span>Code (Coming Soon)</span>
+            </a>
+          </span>
+        </div>
+      </div>
+
+      <p class="subtitle is-5 has-text-grey-dark mt-4" style="max-width:800px; margin:0 auto;">
+        We repurpose pretrained video diffusion models for sparse-view novel view synthesis
+        by treating unordered multi-view images as independent single-frame videos.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== TEASER ==================== -->
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body has-text-centered pt-0">
+      <video id="teaser-video" controls autoplay muted loop playsinline style="width:100%; border-radius:8px;">
+        <source src="static/video/teaser_video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <script>document.getElementById('teaser-video').volume = 0.45;</script>
+      <p class="mt-2 mb-1" style="color:#2b5cdb; font-size:0.9rem;">&#x1f50a; This video has audio narration — click unmute to listen.</p>
+      <p class="subtitle is-6 has-text-grey mt-2" style="max-width:750px; margin:0 auto;">
+        <b>From image to video priors for sparse NVS.</b>
+        We repurpose pretrained video diffusion models for permutation-invariant novel view synthesis
+        with only 1K training scenes and ~1% trainable parameters.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== TABLE OF CONTENTS ==================== -->
+<section class="section pt-2 pb-4">
+  <div class="container is-max-desktop">
+    <nav class="toc-nav">
+      <div class="tags are-medium is-centered">
+        <a class="tag is-link is-light" href="#method">Method</a>
+        <a class="tag is-link is-light" href="#gallery">Gallery</a>
+        <a class="tag is-link is-light" href="#comparisons">Comparisons</a>
+        <a class="tag is-link is-light" href="#trajectory">Trajectory Rendering</a>
+        <a class="tag is-link is-light" href="#num-views">Varying Input Views</a>
+        <a class="tag is-link is-light" href="#ablations">Ablations</a>
+        <a class="tag is-link is-light" href="#permutation">Permutation Invariance</a>
+        <a class="tag is-link is-light" href="#data-efficiency">Data Efficiency</a>
+      </div>
+    </nav>
+  </div>
+</section>
+
+
+<!-- ==================== METHOD OVERVIEW ==================== -->
+<section class="section pt-3" id="method">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Method Overview</h2>
+    <div class="has-text-centered">
+      <img src="./static/images/method.png" style="width:80%; border-radius:8px;" alt="Method overview">
+    </div>
+    <div class="content mt-4" style="max-width:800px; margin:0 auto;">
+      <p>
+        Each input image is encoded <em>independently</em> by a frozen video VAE as a single-frame &ldquo;video&rdquo;,
+        ensuring permutation-invariant encoding.
+        Camera poses are injected via Pl&uuml;cker ray maps concatenated channel-wise with image latents.
+        The resulting view tokens are concatenated along the temporal dimension,
+        and only the predicted query latent is used for decoding.
+        We also remove the temporal component of Rotary Positional Embeddings (RoPE) so the transformer cannot rely on frame order, 
+        making the model invariant to input order.
+        We fine-tune only the patch embedding layer and LoRA modules in the DiT backbone.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== GALLERY ==================== -->
+<section class="section" id="gallery">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Gallery of Novel View Synthesis</h2>
+    <p class="subtitle is-6 has-text-centered has-text-grey mb-2">
+      Given sparse input views, our model synthesizes photorealistic novel views at arbitrary target poses.
+    </p>
+    <p class="has-text-centered is-size-7 has-text-grey mb-5">
+      <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;&middot;&nbsp;
+      <span style="color:#e74c3c;">&#9650;</span> red = predicted novel view
+    </p>
+
+    <div id="gallery-carousel" class="carousel results-carousel">
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_1.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_2.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_3.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_4.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_5.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_6.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_7.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/gallery/gallery_8.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== COMPARISONS ==================== -->
+<section class="section has-background-light" id="comparisons">
+  <div class="container is-max-widescreen">
+    <h2 class="title is-3 has-text-centered">Qualitative Comparisons</h2>
+    <p class="subtitle is-6 has-text-centered has-text-grey mb-5">
+      All outputs are center-cropped to 480&times;480 for fair comparison.
+    </p>
+
+    <!-- Scene selector tabs -->
+    <div class="tabs is-centered is-toggle is-toggle-rounded mb-5" id="comparison-tabs">
+      <ul>
+        <li class="is-active" data-target="comp-scene1"><a>Scene 1</a></li>
+        <li data-target="comp-scene2"><a>Scene 2</a></li>
+        <li data-target="comp-scene3"><a>Scene 3</a></li>
+        <li data-target="comp-scene4"><a>Scene 4</a></li>
+        <li data-target="comp-scene5"><a>Scene 5</a></li>
+        <li data-target="comp-scene6"><a>Scene 6</a></li>
+      </ul>
+    </div>
+
+    <!-- Scene 1 -->
+    <div class="comparison-panel" id="comp-scene1">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s1_input0.png">
+        <img src="./static/images/comparison/s1_input1.png">
+        <img src="./static/images/comparison/s1_input2.png">
+        <img src="./static/images/comparison/s1_input3.png">
+        <img src="./static/images/comparison/s1_input4.png">
+        <img src="./static/images/comparison/s1_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <!-- Target 1 -->
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s1_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s1_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s1_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s1_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <!-- Target 2 -->
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s1_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s1_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s1_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s1_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 2 -->
+    <div class="comparison-panel is-hidden" id="comp-scene2">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s2_input0.png">
+        <img src="./static/images/comparison/s2_input1.png">
+        <img src="./static/images/comparison/s2_input2.png">
+        <img src="./static/images/comparison/s2_input3.png">
+        <img src="./static/images/comparison/s2_input4.png">
+        <img src="./static/images/comparison/s2_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s2_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s2_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s2_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s2_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s2_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s2_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s2_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s2_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 3 -->
+    <div class="comparison-panel is-hidden" id="comp-scene3">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s3_input0.png">
+        <img src="./static/images/comparison/s3_input1.png">
+        <img src="./static/images/comparison/s3_input2.png">
+        <img src="./static/images/comparison/s3_input3.png">
+        <img src="./static/images/comparison/s3_input4.png">
+        <img src="./static/images/comparison/s3_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s3_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s3_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s3_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s3_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s3_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s3_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s3_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s3_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 4 -->
+    <div class="comparison-panel is-hidden" id="comp-scene4">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s4_input0.png">
+        <img src="./static/images/comparison/s4_input1.png">
+        <img src="./static/images/comparison/s4_input2.png">
+        <img src="./static/images/comparison/s4_input3.png">
+        <img src="./static/images/comparison/s4_input4.png">
+        <img src="./static/images/comparison/s4_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s4_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s4_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s4_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s4_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s4_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s4_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s4_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s4_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 5 -->
+    <div class="comparison-panel is-hidden" id="comp-scene5">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s5_input0.png">
+        <img src="./static/images/comparison/s5_input1.png">
+        <img src="./static/images/comparison/s5_input2.png">
+        <img src="./static/images/comparison/s5_input3.png">
+        <img src="./static/images/comparison/s5_input4.png">
+        <img src="./static/images/comparison/s5_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s5_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s5_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s5_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s5_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s5_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s5_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s5_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s5_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 6 -->
+    <div class="comparison-panel is-hidden" id="comp-scene6">
+      <div class="comp-input-strip mb-4">
+        <img src="./static/images/comparison/s6_input0.png">
+        <img src="./static/images/comparison/s6_input1.png">
+        <img src="./static/images/comparison/s6_input2.png">
+        <img src="./static/images/comparison/s6_input3.png">
+        <img src="./static/images/comparison/s6_input4.png">
+        <img src="./static/images/comparison/s6_input5.png">
+      </div>
+      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
+
+      <div class="columns is-variable is-6">
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s6_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s6_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s6_t1_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s6_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+        <div class="column is-half">
+          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
+          <div class="comp-grid-2x2">
+            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s6_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
+            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s6_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s6_t2_seva.png"><figcaption>SEVA</figcaption></figure>
+            <figure class="comp-cell"><img src="./static/images/comparison/s6_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ==================== CONTINUOUS TRAJECTORY RENDERING ==================== -->
+<section class="section" id="trajectory">
+  <div class="container is-max-widescreen">
+    <h2 class="title is-3 has-text-centered">Continuous Trajectory Rendering</h2>
+    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
+      <p>
+        Although each target view is generated <em>independently</em> as a separate forward pass,
+        densely sampling cameras along a smooth trajectory and concatenating the results
+        produces coherent, temporally consistent videos.
+        This demonstrates that the strong 3D priors from video diffusion
+        ensure cross-view consistency even without explicit temporal modeling.
+      </p>
+      <p class="is-size-7 has-text-grey mt-2">
+        <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;
+      </p>
+    </div>
+
+    <div id="trajectory-carousel" class="carousel results-carousel" style="max-width:850px; margin:0 auto;">
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous0.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous1.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous2.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous3.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous4.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous5.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous6.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== VARYING NUMBER OF INPUT VIEWS ==================== -->
+<section class="section" id="num-views">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">NVS with Varying Number of Input Views</h2>
+    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
+      <p>
+        Although trained with a fixed number of input views,
+        our model generalizes to different numbers of inputs at test time.
+        Below we show the same target view generated from K = 3, 4, 5, and 6 input views.
+      </p>
+    </div>
+
+    <div class="columns is-multiline is-variable is-2 is-centered">
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2">K = 3</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
+            <source src="./static/video/num_views/K3.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2">K = 4</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
+            <source src="./static/video/num_views/K4.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2">K = 5</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
+            <source src="./static/video/num_views/K5.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2">K = 6</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
+            <source src="./static/video/num_views/K6.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== ABLATIONS ==================== -->
+<section class="section" id="ablations">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Visual Ablations</h2>
+    <div class="content" style="max-width:800px; margin:0 auto;">
+      <p>
+        We visualize the effect of key design choices on the same target view.
+        Each example shows the 6 input views and the ground-truth target,
+        followed by ablation variants:
+        (a)&nbsp;w/o per-view encoding, (b)&nbsp;w/o pixel unshuffle,
+        and (c)&nbsp;our full model.
+      </p>
+      <p>
+        Without per-view independent encoding, the causal VAE entangles information across frames,
+        producing severely corrupted outputs that bear little resemblance to the target view.
+        Without pixel unshuffle, the ray map geometry is lost during downsampling,
+        leading to plausible but inaccurately posed generations that fail to align with the target camera.
+      </p>
+    </div>
+
+    <!-- Example 1 -->
+    <div class="ablation-example mb-6">
+      <div class="ablation-input-grid mb-3">
+        <div class="ablation-input-left">
+          <div class="columns is-mobile is-multiline is-variable is-1 mb-0">
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_0.png" class="ablation-input" alt="Input 1"></div>
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_1.png" class="ablation-input" alt="Input 2"></div>
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_2.png" class="ablation-input" alt="Input 3"></div>
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_3.png" class="ablation-input" alt="Input 4"></div>
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_4.png" class="ablation-input" alt="Input 5"></div>
+            <div class="column is-one-third"><img src="./static/images/ablation/input_view_5.png" class="ablation-input" alt="Input 6"></div>
+          </div>
+          <div class="has-text-centered is-size-7 has-text-grey">6 Input Views</div>
+        </div>
+        <div class="ablation-input-right">
+          <img src="./static/images/ablation/gt_frame.png" class="ablation-input ablation-gt" alt="GT Target">
+          <div class="has-text-centered is-size-7" style="color:#48c774; font-weight:600;">Target (GT)</div>
+        </div>
+      </div>
+      <div class="columns is-variable is-2">
+        <div class="column is-one-third">
+          <figure class="image ablation-cell">
+            <img src="./static/images/ablation/generated_frame_no_SE.png" alt="w/o per-view encoding">
+            <figcaption>(a) w/o Per-View Encoding</figcaption>
+          </figure>
+        </div>
+        <div class="column is-one-third">
+          <figure class="image ablation-cell">
+            <img src="./static/images/ablation/generated_frame_no_shuffle.png" alt="w/o pixel unshuffle">
+            <figcaption>(b) w/o Pixel Unshuffle</figcaption>
+          </figure>
+        </div>
+        <div class="column is-one-third">
+          <figure class="image ablation-cell ablation-ours">
+            <img src="./static/images/ablation/generated_frame.png" alt="Ours (full model)">
+            <figcaption>(c) <b>Ours (Full Model)</b></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ==================== PERMUTATION INVARIANCE ==================== -->
+<section class="section has-background-light" id="permutation">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Permutation Invariance</h2>
+    <div class="content" style="max-width:800px; margin:0 auto;">
+      <p>
+        A key design goal is invariance to the ordering of input views.
+        Below we show outputs from 10 random permutations of the same input set.
+        With our permutation-invariant designs, the generated target views are virtually identical
+        regardless of input order,
+        whereas model with temporal positional encoding produce noticeably different outputs.
+      </p>
+    </div>
+
+    <div class="ablation-input-grid mb-4">
+      <div class="ablation-input-left">
+        <div class="columns is-mobile is-multiline is-variable is-1 mb-0">
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_00.png" class="ablation-input" alt="Input 1"></div>
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_01.png" class="ablation-input" alt="Input 2"></div>
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_02.png" class="ablation-input" alt="Input 3"></div>
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_03.png" class="ablation-input" alt="Input 4"></div>
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_04.png" class="ablation-input" alt="Input 5"></div>
+          <div class="column is-one-third"><img src="./static/images/permutation/input_view_05.png" class="ablation-input" alt="Input 6"></div>
+        </div>
+        <div class="has-text-centered is-size-7 has-text-grey">6 Input Views</div>
+      </div>
+      <div class="ablation-input-right">
+        <img src="./static/images/permutation/target_frame.png" class="ablation-input ablation-gt" alt="GT Target">
+        <div class="has-text-centered is-size-7" style="color:#48c774; font-weight:600;">Target (GT)</div>
+      </div>
+    </div>
+
+    <div class="columns is-variable is-4">
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2">With Temporal RoPE (not permutation-invariant)</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
+            <source src="./static/video/permutation/perm_frame_original_rope.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <p class="has-text-weight-semibold mb-2" style="color:#3273dc;">Ours (permutation-invariant)</p>
+          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px; border:2px solid #3273dc;">
+            <source src="./static/video/permutation/perm_frame_zero_rope.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== DATA EFFICIENCY ==================== -->
+<section class="section has-background-light" id="data-efficiency">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Data Efficiency</h2>
+    <div class="columns is-vcentered">
+      <div class="column is-half">
+        <div class="content">
+          <p>
+            Our model demonstrates remarkable data efficiency.
+            Even when trained on only <b>20 scenes</b>, it surpasses EscherNet trained on 10K scenes.
+            Performance improves consistently as training data increases,
+            demonstrating that video diffusion priors provide a strong geometric foundation
+            that requires minimal multi-view supervision to unlock.
+          </p>
+        </div>
+      </div>
+      <div class="column is-half has-text-centered">
+        <img src="./static/images/data_scaling.png" style="max-width:100%; border-radius:6px;" alt="Data scaling curve">
+        <p class="is-size-7 has-text-grey mt-2">Performance vs. number of training scenes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer pt-4 pb-4">
+  <div class="container">
+    <div class="content has-text-centered">
+      <p class="is-size-7 has-text-grey">
+        This website template is borrowed from <a href="https://nerfies.github.io/" target="_blank">Nerfies</a>.
+      </p>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Comparison tab switching
+  const tabs = document.querySelectorAll('#comparison-tabs li');
+  const tabList = Array.from(tabs);
+
+  function switchToTab(index) {
+    tabs.forEach(t => t.classList.remove('is-active'));
+    tabList[index].classList.add('is-active');
+
+    document.querySelectorAll('.comparison-panel').forEach(p => p.classList.add('is-hidden'));
+    const target = tabList[index].getAttribute('data-target');
+    document.getElementById(target).classList.remove('is-hidden');
+
+    document.querySelectorAll('#' + target + ' video').forEach(v => {
+      v.currentTime = 0;
+      v.play();
+    });
+  }
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => {
+      switchToTab(i);
+      clearInterval(autoRotate);
+    });
+  });
+
+  // Auto-rotate scenes every 5 seconds
+  let currentTab = 0;
+  let autoRotate = setInterval(() => {
+    currentTab = (currentTab + 1) % tabList.length;
+    switchToTab(currentTab);
+  }, 5000);
+
+  // Lazy-play videos when they enter viewport
+  const videos = document.querySelectorAll('video[autoplay]');
+  const videoObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.play();
+      } else {
+        entry.target.pause();
+      }
+    });
+  }, { threshold: 0.25 });
+  videos.forEach(v => videoObserver.observe(v));
+
+  // Smooth scroll for TOC links
+  document.querySelectorAll('.toc-nav a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>
