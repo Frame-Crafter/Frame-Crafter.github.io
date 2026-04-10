@@ -58,7 +58,7 @@
       <div class="column has-text-centered" style="margin-top:1rem;">
         <div class="publication-links">
           <span class="link-block">
-            <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank"
+            <a href="https://arxiv.org/abs/2604.08500" target="_blank"
                class="button is-normal is-rounded is-dark">
               <span class="icon"><i class="ai ai-arxiv"></i></span>
               <span>arXiv</span>
@@ -78,6 +78,7 @@
         We repurpose pretrained video diffusion models for sparse-view novel view synthesis
         by treating unordered multi-view images as independent single-frame videos.
       </p>
+
     </div>
   </div>
 </section>
@@ -87,13 +88,29 @@
 <section class="hero teaser">
   <div class="container is-max-desktop">
     <div class="hero-body has-text-centered pt-0">
-      <video id="teaser-video" controls autoplay muted loop playsinline style="width:100%; border-radius:8px;">
-        <source src="static/video/teaser_video.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
-      <script>document.getElementById('teaser-video').volume = 0.45;</script>
-      <p class="mt-2 mb-1" style="color:#2b5cdb; font-size:0.9rem;">&#x1f50a; This video has audio narration — click unmute to listen.</p>
-      <p class="subtitle is-6 has-text-grey mt-2" style="max-width:750px; margin:0 auto;">
+
+      <!-- Toggle: Video / Figure -->
+      <div class="buttons is-centered mb-3" id="teaser-toggle">
+        <button class="button is-small is-rounded is-dark" data-target="teaser-video-wrap">Video</button>
+        <button class="button is-small is-rounded is-light" data-target="teaser-figure-wrap">Figure</button>
+      </div>
+
+      <!-- Video panel (default) -->
+      <div id="teaser-video-wrap">
+        <video id="teaser-video" controls autoplay muted loop playsinline style="width:100%; border-radius:8px;">
+          <source src="static/video/teaser_video.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <script>document.getElementById('teaser-video').volume = 0.45;</script>
+        <p class="mt-2 mb-1" style="color:#2b5cdb; font-size:0.9rem;">&#x1f50a; This video has audio narration — click unmute to listen.</p>
+      </div>
+
+      <!-- Figure panel (hidden) -->
+      <div id="teaser-figure-wrap" style="display:none;">
+        <img src="./static/images/teaser.png" style="width:100%; border-radius:8px;" alt="Teaser figure">
+      </div>
+
+      <p class="subtitle is-6 has-text-grey mt-3" style="max-width:750px; margin:0 auto;">
         <b>From image to video priors for sparse NVS.</b>
         We repurpose pretrained video diffusion models for permutation-invariant novel view synthesis
         with only 1K training scenes and ~1% trainable parameters.
@@ -700,6 +717,27 @@
 <!-- ==================== SCRIPTS ==================== -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Teaser video/figure toggle
+  document.querySelectorAll('#teaser-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#teaser-toggle button').forEach(b => {
+        b.classList.remove('is-dark');
+        b.classList.add('is-light');
+      });
+      btn.classList.remove('is-light');
+      btn.classList.add('is-dark');
+
+      const target = btn.getAttribute('data-target');
+      document.getElementById('teaser-video-wrap').style.display = 'none';
+      document.getElementById('teaser-figure-wrap').style.display = 'none';
+      document.getElementById(target).style.display = '';
+
+      if (target === 'teaser-video-wrap') {
+        document.getElementById('teaser-video').play();
+      }
+    });
+  });
 
   // Comparison tab switching
   const tabs = document.querySelectorAll('#comparison-tabs li');
