@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Novel View Synthesis as Video Completion</title>
+  <title>FrameCrafter: Novel View Synthesis as Video Completion</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
@@ -28,7 +28,7 @@
 <section class="hero">
   <div class="hero-body pb-2">
     <div class="container is-max-desktop has-text-centered">
-      <h1 class="title is-2 publication-title">Novel View Synthesis as Video Completion</h1>
+      <h1 class="title is-2 publication-title">FrameCrafter: Novel View Synthesis<br>as Video Completion</h1>
       <p class="subtitle is-4 mb-4" style="color:#3273dc; font-weight:600;">ECCV 2026</p>
 
       <!-- Authors -->
@@ -70,6 +70,13 @@
                class="button is-normal is-rounded is-dark" rel="noopener noreferrer">
               <span class="icon"><i class="fab fa-github"></i></span>
               <span>Code</span>
+            </a>
+          </span>
+          <span class="link-block">
+            <a href="./static/poster.pdf" target="_blank"
+               class="button is-normal is-rounded is-dark">
+              <span class="icon"><i class="fas fa-image"></i></span>
+              <span>Poster</span>
             </a>
           </span>
         </div>
@@ -128,12 +135,13 @@
       <div class="tags are-medium is-centered">
         <a class="tag is-link is-light" href="#method">Method</a>
         <a class="tag is-link is-light" href="#gallery">Gallery</a>
-        <a class="tag is-link is-light" href="#comparisons">Comparisons</a>
         <a class="tag is-link is-light" href="#trajectory">Trajectory Rendering</a>
+        <a class="tag is-link is-light" href="#comparisons">Comparisons</a>
         <a class="tag is-link is-light" href="#num-views">Varying Input Views</a>
         <a class="tag is-link is-light" href="#ablations">Ablations</a>
         <a class="tag is-link is-light" href="#permutation">Permutation Invariance</a>
         <a class="tag is-link is-light" href="#data-efficiency">Data Efficiency</a>
+        <a class="tag is-link is-light" href="#future-work">Future Work</a>
       </div>
     </nav>
   </div>
@@ -214,6 +222,64 @@
       <div class="item">
         <video autoplay controls muted loop playsinline style="width:100%;">
           <source src="./static/video/gallery/gallery_8.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== CONTINUOUS TRAJECTORY RENDERING ==================== -->
+<section class="section" id="trajectory">
+  <div class="container is-max-widescreen">
+    <h2 class="title is-3 has-text-centered">Continuous Trajectory Rendering</h2>
+    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
+      <p>
+        Although each target view is generated <em>independently</em> as a separate forward pass,
+        densely sampling cameras along a smooth trajectory and concatenating the results
+        produces coherent, temporally consistent videos.
+        This demonstrates that the strong 3D priors from video diffusion
+        ensure cross-view consistency even without explicit temporal modeling.
+      </p>
+      <p class="is-size-7 has-text-grey mt-2">
+        <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;
+      </p>
+    </div>
+
+    <div id="trajectory-carousel" class="carousel results-carousel" style="max-width:850px; margin:0 auto;">
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous0.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous1.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous2.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous3.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous4.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous5.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="item">
+        <video autoplay controls muted loop playsinline style="width:100%;">
+          <source src="./static/video/continuous/continuous6.mp4" type="video/mp4">
         </video>
       </div>
     </div>
@@ -451,64 +517,6 @@
 </section>
 
 
-<!-- ==================== CONTINUOUS TRAJECTORY RENDERING ==================== -->
-<section class="section" id="trajectory">
-  <div class="container is-max-widescreen">
-    <h2 class="title is-3 has-text-centered">Continuous Trajectory Rendering</h2>
-    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
-      <p>
-        Although each target view is generated <em>independently</em> as a separate forward pass,
-        densely sampling cameras along a smooth trajectory and concatenating the results
-        produces coherent, temporally consistent videos.
-        This demonstrates that the strong 3D priors from video diffusion
-        ensure cross-view consistency even without explicit temporal modeling.
-      </p>
-      <p class="is-size-7 has-text-grey mt-2">
-        <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;
-      </p>
-    </div>
-
-    <div id="trajectory-carousel" class="carousel results-carousel" style="max-width:850px; margin:0 auto;">
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous0.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous1.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous2.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous3.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous4.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous5.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous6.mp4" type="video/mp4">
-        </video>
-      </div>
-    </div>
-  </div>
-</section>
-
-
 <!-- ==================== VARYING NUMBER OF INPUT VIEWS ==================== -->
 <section class="section" id="num-views">
   <div class="container is-max-desktop">
@@ -674,6 +682,11 @@
         </div>
       </div>
     </div>
+
+    <!-- Per-pixel std across permutations -->
+    <div class="has-text-centered mt-5">
+      <img src="./static/images/perm_std.png" style="width:80%; border-radius:6px;" alt="Per-pixel standard deviation across permutations">
+    </div>
   </div>
 </section>
 
@@ -698,6 +711,49 @@
         <img src="./static/images/data_scaling.png" style="max-width:100%; border-radius:6px;" alt="Data scaling curve">
         <p class="is-size-7 has-text-grey mt-2">Performance vs. number of training scenes.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== FUTURE WORK ==================== -->
+<section class="section" id="future-work">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Future Work</h2>
+    <div class="content" style="max-width:800px; margin:0 auto;">
+      <p>
+        Our current pipeline reprocesses all input context views through the DiT backbone
+        at every denoising step, resulting in O(N&sup2;) self-attention cost that scales quadratically
+        with the number of inputs.
+        A promising future direction is to encode the input views <em>once</em> and
+        inject them into the denoising process via cross-attention, reducing the per-step
+        cost to O(N) and enabling the model to scale to many more input views
+        without a proportional increase in compute.
+      </p>
+    </div>
+    <div class="has-text-centered">
+      <img src="./static/images/future.png" style="width:75%; border-radius:6px;" alt="Future work: cross-attention architecture">
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== CITATION ==================== -->
+<section class="section has-background-light" id="citation">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Citation</h2>
+    <div class="content" style="max-width:700px; margin:0 auto;">
+      <p class="has-text-centered has-text-grey">
+        If you find this work useful, please consider citing:
+      </p>
+      <pre style="border-radius:8px; padding:1.2rem; font-size:0.85rem; background:#f5f5f5; overflow-x:auto;">@inproceedings{wu2026framecrafter,
+  title={FrameCrafter: Novel View Synthesis as Video Completion},
+  author={Wu, Qi and Vuong, Khiem and Jeon, Minsik and Narasimhan, Srinivasa and Ramanan, Deva},
+  booktitle={European Conference on Computer Vision},
+  pages={73--91},
+  year={2026},
+  organization={Springer}
+}</pre>
     </div>
   </div>
 </section>
