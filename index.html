@@ -133,8 +133,8 @@
   </div>
   <div class="wrap">
     <div class="fig-card rv" style="margin-top:22px">
-      <img src="./static/fig/method.png" alt="FrameCrafter architecture: per-view VAE encoding, Plücker ray maps, DiT with LoRA, query latent decoded" data-zoom>
-      <div class="fig-cap">Wan2.1-I2V-14B with LoRA. Each view is VAE-encoded on its own and concatenated with its Plücker ray map; only the query latent is decoded and supervised.</div>
+      <img class="narrow" src="./static/fig/method_poster.png" alt="FrameCrafter architecture: sparse unordered input views with poses, each encoded by the frozen video VAE; a zero latent with the query pose; concatenation; DiT blocks with LoRA; the query latent decoded into the predicted novel view" data-zoom>
+      <div class="fig-cap">Each view is VAE-encoded on its own and concatenated with its camera as a Plücker ray map; the query starts from a zero latent with the query camera. Only the query latent is decoded (Wan2.1-I2V-14B with LoRA).</div>
     </div>
 
     <div class="changes">

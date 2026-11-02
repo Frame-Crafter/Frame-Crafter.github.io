@@ -229,6 +229,7 @@ p { margin: 0 0 16px; }
 /* ---------- method ---------- */
 .fig-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
 .fig-card img { width: 100%; height: auto; cursor: zoom-in; }
+.fig-card img.narrow { max-width: 760px; margin: 0 auto; }
 .fig-cap { font-size: 14.5px; color: var(--muted); margin-top: 12px; }
 .changes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
 .change { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 22px 18px; display: flex; flex-direction: column; }

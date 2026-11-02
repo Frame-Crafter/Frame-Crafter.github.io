@@ -777,7 +777,7 @@ function initTable() {
     });
     $('#qTable').innerHTML = html + '</table>';
     $('#qNote').textContent = rows === T6
-      ? 'All predictions resized or center-cropped to 480×480. Regression models (top) score well on PSNR/SSIM by predicting blurry averages, which LPIPS and DreamSim penalize. DS = DreamSim.'
+      ? 'All predictions resized or center-cropped to 480×480. Regression models (top) score well on PSNR/SSIM by predicting blurry averages, which LPIPS and DreamSim penalize.'
       : '3-view setting, not seen during training (the model is trained with 6 inputs). All predictions resized or center-cropped to 480×480.';
   }
   segment($('#qSeg'), d => render(d.m === '6' ? T6 : T3));
