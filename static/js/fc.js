@@ -158,20 +158,22 @@ function initStory() {
     films.forEach(f => (f.style.opacity = 0));
     ring.style.opacity = 0; dit.style.opacity = 0; dit.style.transform = 'translate(-50%,-50%) scale(.9)';
     cards.forEach(c => $('.alt', c).style.opacity = 0);
-    if (step <= 1) {
-      const n = step === 0 ? 6 : 7, gap = W * 0.012, w = (W * 0.9 - gap * (n - 1)) / n, ch = w * AR;
+    if (step === 0) {
+      // one still image: what an image model is pretrained on
+      const w = W * 0.4, x = (W - w) / 2, y = H * 0.44 - w * AR / 2;
+      cards.forEach((c, i) => { place(c, x + w * 0.3, y + w * AR * 0.2, w * 0.4, 0, i === 2 ? 1 : 0); $('.alt', c).style.opacity = 1; });
+      place(cards[2], x, y, w); tag(cards[2], 'one image');
+      place(q, x + w * 0.3, y + w * AR * 0.2, w * 0.4, 0, 0);
+      lab.innerHTML = '<b>Image diffusion</b> · pretrained on still images'; lab2.textContent = 'multi-view learned from ~80K scenes';
+    } else if (step === 1) {
+      // the same image is one frame of a video: the camera moves through the scene
+      const n = 5, gap = W * 0.012, w = (W * 0.9 - gap * (n - 1)) / n, ch = w * AR;
       const x0 = (W - (n * w + (n - 1) * gap)) / 2, y = H * 0.46 - ch / 2;
       films[0].style.top = (y - 22) + 'px'; films[1].style.top = (y + ch + 16) + 'px';
       films.forEach(f => (f.style.opacity = 1));
-      if (step === 0) {
-        cards.forEach((c, i) => { place(c, x0 + i * (w + gap), y, w, 0, i < 5 ? 1 : 0); $('.alt', c).style.opacity = 1; tag(c, `t=${i}`); });
-        place(q, x0 + 5 * (w + gap), y, w); tag(q, 't=5 ?', '');
-        lab.innerHTML = '<b>Video clip</b> · consecutive frames'; lab2.textContent = 'complete the next frame';
-      } else {
-        cards.forEach((c, i) => { place(c, x0 + i * (w + gap), y, w); tag(c, `t=${i}`); });
-        place(q, x0 + 6 * (w + gap), y, w); tag(q, 't=6 ?');
-        lab.innerHTML = '<b>Sparse views</b> · 6 photos + 1 query camera'; lab2.textContent = 'a very low frame rate';
-      }
+      cards.forEach((c, i) => { place(c, x0 + Math.min(i, 4) * (w + gap), y, w, 0, i < 5 ? 1 : 0); $('.alt', c).style.opacity = 1; tag(c, `t=${i}`); });
+      place(q, x0 + 4 * (w + gap), y, w, 0, 0);
+      lab.innerHTML = '<b>Video diffusion</b> · pretrained on moving cameras'; lab2.textContent = 'viewpoint changes seen at scale';
     } else if (step === 2) {
       const w = W * 0.2, ch = w * AR;
       const slots = [[0.06, 0.12, -4], [0.37, 0.07, 3], [0.68, 0.13, -2], [0.08, 0.56, 3], [0.39, 0.6, -3], [0.7, 0.55, 4]];
@@ -183,13 +185,11 @@ function initStory() {
           tag(c, `t=${sl}`, 'shuffled');
         });
       };
-      place(q, qx, H * 0.36, w * 0.9, 0, 1); tag(q, 't=6 ?');
-      // keep the query clear of the cards
-      q.style.transform = `translate(${W * 0.5 - w * 0.45}px, ${H * 0.43}px)`;
+      place(q, qx, H * 0.4, w * 0.9, 0, 0);
       apply();
       shuffleTimer = setInterval(() => { order = order.slice().sort(() => Math.random() - 0.5); apply(); }, 1500);
       $$('.tag.shuffled', stage).forEach(t => (t.style.background = '#b91c1c'));
-      lab.innerHTML = '<b>Same photos, new order</b> → new time indices'; lab2.textContent = 'an ordered model sees a different input';
+      lab.innerHTML = '<b>6 sparse photos</b> · same set, new order'; lab2.textContent = 'new time indices, a different input';
     } else {
       const big = step === 4, w = W * (big ? 0.17 : 0.2), ch = w * AR;
       const cx = W / 2, cy = H * 0.47, rx = W * 0.37, ry = H * 0.34;
@@ -200,39 +200,47 @@ function initStory() {
         tag(c, 't=0', 'zero');
       });
       const qw = big ? W * 0.36 : W * 0.22;
-      place(q, cx - qw / 2, cy - qw * AR / 2, qw); tag(q, big ? 'query · t=0' : 't=0', 'zero');
+      place(q, cx - qw / 2, cy - qw * AR / 2, qw, 0, big ? 1 : 0); tag(q, 'query · t=0', 'zero');
       if (big) { dit.style.opacity = 1; dit.style.transform = 'translate(-50%,-50%) scale(1)'; dit.style.top = cy + 'px'; }
-      lab.innerHTML = big ? '<b>Denoising the query</b>' : '<b>An unordered set</b> · every view at t=0';
-      lab2.textContent = big ? '' : 'views differ only by their camera rays';
+      lab.innerHTML = big ? '<b>Denoising the query</b>' : '<b>An unordered set</b> · one latent per photo, all at t=0';
+      lab2.textContent = big ? '' : 'told apart only by their camera rays';
     }
     $$('.tag', stage).forEach(t => { if (!t.classList.contains('shuffled')) t.style.background = ''; });
+    qMark.style.fontSize = Math.max(18, q.getBoundingClientRect().width * 0.3) + 'px';
     const filled = step === 4;
     qImg.style.opacity = filled ? 1 : 0; qMark.style.opacity = filled ? 0 : 1; q.classList.toggle('filled', filled);
   }
 
+  // compact stepper: auto-advances while on screen; clicking a step takes over
   const steps = $$('.step', $('#storySteps'));
-  const io = new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return;
-    const k = +e.target.dataset.step;
-    steps.forEach(x => x.classList.toggle('on', x === e.target));
-    if (k !== step) { step = k; layout(); }
-  }), { rootMargin: '-42% 0px -42% 0px' });
-  steps.forEach(x => io.observe(x));
-
-  let sig = null;
+  const DUR = [3400, 3800, 4600, 4200, 4200];
+  let sig = null, auto = !reduced, vis = false, t0 = 0, raf = 0;
   getJSON(D + 'meta.json').then(m => (sig = m.sigmas));
-  const last = steps[4];
-  const scrub = () => {
-    if (step !== 4) return;
-    const r = last.getBoundingClientRect();
-    const p = clamp((window.innerHeight * 0.55 - r.top) / (r.height * 0.75), 0, 1);
-    const k = Math.round(p * 49);
-    qImg.src = xs[k].src;
-    lab2.innerHTML = `step <b>${k + 1}</b> / 50` + (sig ? ` · σ = ${sig[k].toFixed(3)}` : '');
+  const go = k => {
+    step = k; t0 = performance.now();
+    steps.forEach((x, i) => x.classList.toggle('on', i === k));
+    layout();
   };
-  window.addEventListener('scroll', scrub, { passive: true });
+  const tick = now => {
+    raf = requestAnimationFrame(tick);
+    if (!vis) return;
+    const p = clamp((now - t0) / DUR[step], 0, 1);
+    const pg = $('.pg', steps[step]); if (pg) pg.style.width = (auto ? 100 * p : 0) + '%';
+    if (step === 4) {
+      // run the 50 denoising steps in the first 70% of the slot, then hold the result
+      const k = Math.round(clamp(p / 0.7, 0, 1) * 49);
+      if (qImg.dataset.k !== String(k)) {
+        qImg.dataset.k = k; qImg.src = xs[k].src;
+        lab2.innerHTML = `step <b>${k + 1}</b> / 50` + (sig ? ` · σ = ${sig[k].toFixed(3)}` : '');
+      }
+    }
+    if (auto && p >= 1) go((step + 1) % 5);
+  };
+  steps.forEach((x, i) => x.addEventListener('click', () => { auto = false; go(i); }));
+  onVisible(stage, v => { vis = v; if (v) t0 = performance.now(); }, { threshold: 0.35 });
   window.addEventListener('resize', () => { if (step >= 0) layout(); });
-  step = 0; layout();
+  go(0);
+  raf = requestAnimationFrame(tick);
 }
 
 /* ------------------------------------------------------------------ 02 method widgets */
@@ -408,20 +416,6 @@ function initRoPE() {
   apply();
 }
 
-function initPlucker() {
-  const g = $('#plGrid'), G = S + 'gallery/gym/', P = S + 'plucker/';
-  g.append(h('div'));
-  for (let i = 0; i < 6; i++) g.append(h('div', { class: 'h' }, `input ${i + 1}`));
-  g.append(h('div', { class: 'h c-orange' }, 'query'));
-  g.append(h('div', { class: 'rl' }, 'image'));
-  for (let i = 0; i < 6; i++) g.append(h('img', { src: G + `in${i}.jpg`, alt: '', loading: 'lazy' }));
-  g.append(h('div', { style: 'aspect-ratio:416/240;border:2px dashed #e8590c;border-radius:5px;display:grid;place-items:center;color:#e8590c;font-family:var(--serif);font-size:22px' }, '?'));
-  [['dir', 'direction d'], ['mom', 'moment o×d']].forEach(([k, l]) => {
-    g.append(h('div', { class: 'rl' }, l));
-    for (let i = 0; i < 7; i++) g.append(h('img', { src: P + `${k}${i}.jpg`, alt: '', loading: 'lazy', class: i === 6 ? 'q' : '' }));
-  });
-}
-
 /* ------------------------------------------------------------------ 03 denoising */
 function initDenoise() {
   const SC = [{ id: 'gym', label: 'Gym' }, { id: 'store', label: 'Appliance store' }, { id: 'steak', label: 'Steakhouse' }];
@@ -512,6 +506,74 @@ function initDenoise() {
   onVisible($('#dnMain'), v => { if (v && !played) { ensure(); played = true; setTimeout(play, 600); } }, { threshold: 0.6 });
 }
 
+/* ------------------------------------------------------------------ 04 extreme camera paths */
+async function initPaths() {
+  const data = await getJSON(S + 'data/paths.json');
+  const chips = $('#pathChips'), grid = $('#pathGrid'), rigEl = $('#pathRig');
+  const METHODS = data.methods;
+  let rig = null, frs = [], cur = null, row = -1;
+  onVisible(rigEl, async v => {
+    if (v && !rig) { rig = await makeRig(rigEl); if (rig) { rig.onPick = i => setRow(i); build(); } }
+  }, { threshold: 0.01, rootMargin: '300px' });
+  function build() {
+    if (!rig || !cur) return;
+    rig.clear(); frs = [];
+    const P = S + `paths/${cur.id}/`;
+    rig.path(cur.path, 0xf97316, 0.5);
+    cur.inputs.forEach((c, i) => rig.frustum(c, { fovx: cur.fov_in[0], fovy: cur.fov_in[1], size: 0.12, color: 0x3b82f6, tex: P + `in${i}.jpg`, opacity: 0.92 }));
+    cur.targets.forEach((t, i) => frs.push(rig.frustum(t.c2w, { fovx: t.fov[0], fovy: t.fov[1], size: 0.15, color: 0xf97316, tex: P + `ours${i}.jpg`, opacity: 0.95, idx: i })));
+    rig.margin = 0.12; rig.home_(cur.inputs.map(c => [c[3], c[7], c[11]]).concat(cur.path), { dist: 2.6, elev: 0.28, az: cur.az || 0 });
+    highlight();
+  }
+  function highlight() {
+    if (rig) frs.forEach((f, i) => rig.setColor(f, i === row ? 0xffffff : 0xf97316));
+    $$('.vl', grid).forEach((x, i) => x.classList.toggle('on', i === row));
+    $$('.cell', grid).forEach(x => x.classList.toggle('row-on', +x.dataset.r === row));
+    grid.classList.toggle('hov', row >= 0);
+  }
+  function setRow(i) { row = i; highlight(); }
+  function load(sc) {
+    cur = sc; row = -1;
+    const P = S + `paths/${sc.id}/`;
+    $$('.scene-chip', chips).forEach(c => c.classList.toggle('on', c.dataset.id === sc.id));
+    const ins = $('#pathInputs'); ins.innerHTML = '';
+    for (let i = 0; i < sc.n_in; i++) ins.append(h('img', { src: P + `in${i}.jpg`, alt: `input ${i + 1}`, loading: 'lazy' }));
+    $('#pathInLab').textContent = `${sc.n_in} input photos`;
+    $('#pathNote').innerHTML = sc.note;
+    grid.innerHTML = '';
+    grid.append(h('div', { class: 'mh-pad' }));
+    METHODS.forEach(m => grid.append(h('div', { class: 'mh' + (m.id === 'ours' ? ' ours' : '') }, m.name, h('small', {}, m.sub))));
+    sc.targets.forEach((t, i) => {
+      grid.append(h('div', { class: 'vl', onmouseenter: () => setRow(i), onmouseleave: () => setRow(-1) }, h('b', {}, String(i + 1)), t.label));
+      METHODS.forEach(m => {
+        const img = h('img', { src: P + `${m.id}${i}.jpg`, alt: `${m.name}, view ${i + 1} (${t.label})`, loading: 'lazy' });
+        grid.append(h('div', { class: 'cell' + (m.id === 'ours' ? ' ours' : ''), 'data-r': i,
+          onmouseenter: () => setRow(i), onmouseleave: () => setRow(-1),
+          onclick: () => { const lb = $('#lightbox'); $('img', lb).src = img.src; lb.classList.add('show'); } }, img));
+      });
+    });
+    build();
+  }
+  data.scenes.forEach(sc => chips.append(h('button', { class: 'scene-chip', 'data-id': sc.id, onclick: () => load(sc) },
+    h('img', { src: S + `paths/${sc.id}/in0.jpg`, alt: '', loading: 'lazy' }), sc.label)));
+  load(data.scenes[0]);
+}
+
+/* ------------------------------------------------------------------ 04 results switch */
+function initResTabs() {
+  const cap = {
+    sparse: 'DL3DV benchmark and unseen DL3DV-2K scenes. Move across the image to compare with the held-out ground truth; click a thumbnail or an orange camera to switch views.',
+    paths: 'Cameras sampled densely along a path, each frame generated on its own with no temporal model, still play back as a consistent video. Blue marks are the 6 inputs.',
+    wild: 'Casual captures with COLMAP poses, including motion blur, over-exposure and aerial views.',
+  };
+  const set = m => {
+    $$('#resPanel .res-pane').forEach(p => (p.hidden = p.dataset.p !== m));
+    $('#resCap').textContent = cap[m];
+  };
+  segment($('#resTabs'), d => set(d.m));
+  set('sparse');
+}
+
 /* ------------------------------------------------------------------ 04 gallery */
 async function initGallery() {
   const data = await getJSON(S + 'data/gallery.json');
@@ -545,7 +607,7 @@ async function initGallery() {
     $('#galGT').src = G + `gt${i}.jpg`; $('#galGen').src = G + `gen${i}.jpg`;
     $$('#galTargets img').forEach((im, j) => im.classList.toggle('on', j === i));
     $('#galMeta').textContent = `scene ${cur.scene} · frame ${cur.targets[i]}`;
-    $('#galSet').textContent = cur.set === '2k' ? 'DL3DV-2K (unseen) · 480×832' : 'DL3DV benchmark · 480×832';
+    $('#galSet').textContent = cur.set === '2k' ? 'DL3DV-2K (unseen)' : 'DL3DV benchmark';
     highlight();
   }
   function load(sc) {
@@ -857,11 +919,12 @@ safe('story', initStory);
 safe('vae', initVAE);
 safe('cams', initCams);
 safe('rope', initRoPE);
-safe('plucker', initPlucker);
 safe('denoise', initDenoise);
+safe('restabs', initResTabs);
 safe('gallery', initGallery);
 safe('theater', initTheater);
 safe('compare', initCompare);
 safe('table', initTable);
+safe('paths', initPaths);
 safe('perm', initPerm);
 safe('chart', drawDataChart);

@@ -128,14 +128,14 @@ export class Rig {
     plane.position.z = z;
     g.add(plane);
     if (idx !== null) { plane.userData.idx = idx; this.pickables.push(plane); }
-    g.userData = { lines, plane, color };
+    g.userData = { lines, plane, color, tex };
     this.group.add(g);
     return g;
   }
 
   setColor(f, color, planeOpacity) {
     f.userData.lines.material.color.setHex(color);
-    if (!f.userData.plane.material.map) f.userData.plane.material.color.setHex(color);
+    if (!f.userData.tex) f.userData.plane.material.color.setHex(color); // keep textures untinted
     if (planeOpacity !== undefined) f.userData.plane.material.opacity = planeOpacity;
   }
 
@@ -151,7 +151,7 @@ export class Rig {
   setMatrix(obj, c2w) { obj.matrix.copy(mat(c2w)); }
 
   // Place the viewer behind/above the mean camera so image planes read correctly.
-  home_(centers, { dist = 3.0, elev = 0.42 } = {}) {
+  home_(centers, { dist = 3.0, elev = 0.42, az = 0 } = {}) {
     const box = new THREE.Box3();
     centers.forEach(c => box.expandByPoint(new THREE.Vector3(c[0], c[1], c[2])));
     const target = box.getCenter(new THREE.Vector3());
@@ -161,7 +161,7 @@ export class Rig {
     const vf = this.camera.fov * Math.PI / 180;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * this.camera.aspect);
     const r = rad / Math.sin(Math.min(vf, hf) / 2) * (dist / 3.0);
-    this.home = { target, r, el: elev, az: 0 };
+    this.home = { target, r, el: elev, az };
     this.interacted = false;
     this.t0 = performance.now();
     this.controls.target.copy(target);
