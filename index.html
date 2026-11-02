@@ -1,752 +1,562 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FrameCrafter: Novel View Synthesis as Video Completion</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-
-  <link rel="stylesheet" href="./static/css/bulma.min.css">
-  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
-  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
-  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
-  <link rel="stylesheet" href="./static/css/index.css">
-
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script defer src="./static/js/fontawesome.all.min.js"></script>
-  <script src="./static/js/bulma-carousel.min.js"></script>
-  <script src="./static/js/bulma-slider.min.js"></script>
-  <script src="./static/js/index.js"></script>
+  <meta name="description" content="FrameCrafter turns a pretrained video diffusion model into a permutation-invariant multi-view model for sparse-view novel view synthesis, using LoRA and only 1K training scenes. ECCV 2026.">
+  <meta property="og:title" content="FrameCrafter: Novel View Synthesis as Video Completion">
+  <meta property="og:description" content="Make video diffusion forget about time: a pretrained video model becomes a strong, permutation-invariant multi-view model for sparse-view NVS. ECCV 2026.">
+  <meta property="og:image" content="https://frame-crafter.github.io/static/fig/teaser_new.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='7' width='18' height='13' rx='2' fill='%232563eb'/%3E%3Crect x='11' y='12' width='18' height='13' rx='2' fill='%23e8590c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/fc.css">
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/" } }
+  </script>
+  <script type="module" src="./static/js/fc.js"></script>
 </head>
 <body>
 
-<!-- ==================== TITLE ==================== -->
-<section class="hero">
-  <div class="hero-body pb-2">
-    <div class="container is-max-desktop has-text-centered">
-      <h1 class="title is-2 publication-title">FrameCrafter: Novel View Synthesis<br>as Video Completion</h1>
-      <p class="subtitle is-4 mb-4" style="color:#3273dc; font-weight:600;">ECCV 2026</p>
-
-      <!-- Authors -->
-      <div class="is-size-5 publication-authors" style="margin-top:0.8rem;">
-        <span class="author-block">
-          <a href="https://szqwu.github.io/" target="_blank">Qi Wu</a>,
-        </span>
-        <span class="author-block">
-          <a href="https://www.khiemvuong.com/" target="_blank">Khiem Vuong</a>,
-        </span>
-        <span class="author-block">
-          <a href="https://msjeon.me/" target="_blank">Minsik Jeon</a>,
-        </span>
-        <span class="author-block">
-          <a href="https://www.cs.cmu.edu/~srinivas/" target="_blank">Srinivasa Narasimhan</a>,
-        </span>
-        <span class="author-block">
-          <a href="https://www.cs.cmu.edu/~deva/" target="_blank">Deva Ramanan</a>
-        </span>
-      </div>
-
-      <!-- Affiliation -->
-      <div class="is-size-6 publication-authors has-text-grey-dark" style="margin-top:0.4rem;">
-        <span class="author-block">Carnegie Mellon University</span>
-      </div>
-
-      <!-- Buttons -->
-      <div class="column has-text-centered" style="margin-top:1rem;">
-        <div class="publication-links">
-          <span class="link-block">
-            <a href="https://arxiv.org/abs/2604.08500" target="_blank"
-               class="button is-normal is-rounded is-dark">
-              <span class="icon"><i class="ai ai-arxiv"></i></span>
-              <span>arXiv</span>
-            </a>
-          </span>
-          <span class="link-block">
-            <a href="https://github.com/szqwu/FrameCrafter" target="_blank"
-               class="button is-normal is-rounded is-dark" rel="noopener noreferrer">
-              <span class="icon"><i class="fab fa-github"></i></span>
-              <span>Code</span>
-            </a>
-          </span>
-          <span class="link-block">
-            <a href="./static/poster.pdf" target="_blank"
-               class="button is-normal is-rounded is-dark">
-              <span class="icon"><i class="fas fa-image"></i></span>
-              <span>Poster</span>
-            </a>
-          </span>
-        </div>
-      </div>
-
-      <p class="subtitle is-5 has-text-grey-dark mt-4" style="max-width:800px; margin:0 auto;">
-        Make video diffusion “forget” about time for sparse-view NVS: turning a pretrained video model into a multi-view model with a strong prior.
-
-      </p>
-
+<!-- ============================== NAV ============================== -->
+<nav class="nav" id="nav">
+  <div class="wide">
+    <a class="brand" href="#top">FrameCrafter</a>
+    <div class="links">
+      <a href="#idea">Idea</a>
+      <a href="#method">Method</a>
+      <a href="#denoise">Denoising</a>
+      <a href="#results">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#discussion">Discussion</a>
+      <a href="#bibtex">BibTeX</a>
     </div>
+  </div>
+  <div class="bar" id="navbar"></div>
+</nav>
+
+<!-- ============================== HERO ============================== -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="venue"><i></i>ECCV 2026 · Malmö</div>
+    <h1>
+      <span class="wordmark"><span class="fr">Frame</span><span class="cr">Crafter</span></span>
+      <span class="subtitle">Novel View Synthesis as Video Completion</span>
+    </h1>
+    <div class="authors">
+      <span><a href="https://szqwu.github.io/" target="_blank" rel="noopener">Qi Wu</a></span><span><a href="https://www.khiemvuong.com/" target="_blank" rel="noopener">Khiem Vuong</a></span><span><a href="https://msjeon.me/" target="_blank" rel="noopener">Minsik Jeon</a></span><span><a href="https://www.cs.cmu.edu/~srinivas/" target="_blank" rel="noopener">Srinivasa Narasimhan</a></span><span><a href="https://www.cs.cmu.edu/~deva/" target="_blank" rel="noopener">Deva Ramanan</a></span>
+    </div>
+    <div class="affil">Carnegie Mellon University</div>
+    <div class="btns">
+      <a class="btn" href="https://arxiv.org/pdf/2604.08500" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Paper</a>
+      <a class="btn" href="https://arxiv.org/abs/2604.08500" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>arXiv</a>
+      <a class="btn" href="https://github.com/szqwu/FrameCrafter" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>Code</a>
+      <a class="btn" href="https://huggingface.co/szqwu/FrameCrafter" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>Model</a>
+      <a class="btn ghost" href="#video">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Video</a>
+      <a class="btn ghost" href="./static/poster.pdf" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>Poster</a>
+      <a class="btn ghost" href="#bibtex">BibTeX</a>
+    </div>
+    <p class="tagline">Make video diffusion <em>forget</em> about time, and a pretrained video model becomes a multi-view model with a strong prior.</p>
+  </div>
+</header>
+
+<!-- ============================== REEL ============================== -->
+<section class="reel" aria-label="Results reel">
+  <div class="wide">
+    <div class="reel-grid">
+      <div class="reel-tile"><video data-src="./static/hero/temple.mp4" muted loop playsinline preload="none" poster="./static/traj/temple/poster.jpg"></video><span>temple</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/market.mp4" muted loop playsinline preload="none" poster="./static/traj/market/poster.jpg"></video><span>supermarket</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/tennis.mp4" muted loop playsinline preload="none" poster="./static/traj/tennis/poster.jpg"></video><span>tennis court</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/shrine.mp4" muted loop playsinline preload="none" poster="./static/traj/shrine/poster.jpg"></video><span>shrine</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/sculpture.mp4" muted loop playsinline preload="none" poster="./static/traj/sculpture/poster.jpg"></video><span>sculpture</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/kitchen.mp4" muted loop playsinline preload="none" poster="./static/traj/kitchen/poster.jpg"></video><span>kitchen</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/factory.mp4" muted loop playsinline preload="none" poster="./static/traj/factory/poster.jpg"></video><span>factory</span></div>
+      <div class="reel-tile"><video data-src="./static/hero/house.mp4" muted loop playsinline preload="none" poster="./static/traj/house/poster.jpg"></video><span>backyard</span></div>
+    </div>
+    <p class="reel-cap">Every camera path above passes through <b>6 posed input photos</b>. All other frames are <b>novel views generated one at a time</b> by FrameCrafter, with no temporal model linking them. Unseen DL3DV scenes.</p>
   </div>
 </section>
 
-
-<!-- ==================== TEASER ==================== -->
-<section class="hero teaser">
-  <div class="container is-max-desktop">
-    <div class="hero-body has-text-centered pt-0">
-
-      <!-- Toggle: Video / Figure -->
-      <div class="buttons is-centered mb-3" id="teaser-toggle">
-        <button class="button is-small is-rounded is-dark" data-target="teaser-video-wrap">Video</button>
-        <button class="button is-small is-rounded is-light" data-target="teaser-figure-wrap">Figure</button>
-      </div>
-
-      <!-- Video panel (default) -->
-      <div id="teaser-video-wrap">
-        <video id="teaser-video" controls autoplay muted loop playsinline style="width:100%; border-radius:8px;">
-          <source src="static/video/teaser_video.mp4" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <script>document.getElementById('teaser-video').volume = 0.45;</script>
-        <p class="mt-2 mb-1" style="color:#2b5cdb; font-size:0.9rem;">&#x1f50a; This video has audio narration — click unmute to listen.</p>
-      </div>
-
-      <!-- Figure panel (hidden) -->
-      <div id="teaser-figure-wrap" style="display:none;">
-        <img src="./static/images/teaser.png" style="width:80%; border-radius:8px;" alt="Teaser figure">
-      </div>
-
-      <p class="subtitle is-6 has-text-grey mt-3" style="max-width:750px; margin:0 auto;">
-        <b>From image to video priors for sparse NVS.</b>
-        We repurpose pretrained video diffusion models for permutation-invariant novel view synthesis
-        with only 1K training scenes and ~1% trainable parameters.
-      </p>
+<!-- ============================== TL;DR ============================== -->
+<section class="tldr" id="tldr">
+  <div class="wrap">
+    <p class="big rv">Video diffusion models already know how a scene looks from many viewpoints. FrameCrafter turns one into a <span class="hl">permutation-invariant multi-view model</span> with three small architectural changes, LoRA, and only <span class="hl">1,000 training scenes</span>.</p>
+    <div class="stats rv">
+      <div class="stat"><div class="n">1K</div><div class="l">multi-view training scenes (DL3DV). SEVA uses ~80K, about <b>80× more</b>.</div></div>
+      <div class="stat"><div class="n">~1<small>%</small></div><div class="l">of parameters trained: LoRA (rank 32) plus the patch embedding of Wan2.1-14B.</div></div>
+      <div class="stat"><div class="n">20</div><div class="l">training scenes are enough to beat EscherNet trained on <b>10K</b> scenes.</div></div>
+      <div class="stat"><div class="n">38<small>×</small></div><div class="l">lower PSNR std across input orderings than a model that keeps temporal RoPE.</div></div>
     </div>
-  </div>
-</section>
-
-
-<!-- ==================== TABLE OF CONTENTS ==================== -->
-<section class="section pt-2 pb-4">
-  <div class="container is-max-desktop">
-    <nav class="toc-nav">
-      <div class="tags are-medium is-centered">
-        <a class="tag is-link is-light" href="#method">Method</a>
-        <a class="tag is-link is-light" href="#gallery">Gallery</a>
-        <a class="tag is-link is-light" href="#trajectory">Trajectory Rendering</a>
-        <a class="tag is-link is-light" href="#comparisons">Comparisons</a>
-        <a class="tag is-link is-light" href="#num-views">Varying Input Views</a>
-        <a class="tag is-link is-light" href="#ablations">Ablations</a>
-        <a class="tag is-link is-light" href="#permutation">Permutation Invariance</a>
-        <a class="tag is-link is-light" href="#data-efficiency">Data Efficiency</a>
-        <a class="tag is-link is-light" href="#future-work">Future Work</a>
-      </div>
-    </nav>
-  </div>
-</section>
-
-
-<!-- ==================== METHOD OVERVIEW ==================== -->
-<section class="section pt-3" id="method">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Method Overview</h2>
-    <div class="has-text-centered">
-      <img src="./static/images/method.png" style="width:80%; border-radius:8px;" alt="Method overview">
-    </div>
-    <div class="content mt-4" style="max-width:800px; margin:0 auto;">
-      <p>
-        Each input image is encoded <em>independently</em> by a frozen video VAE as a single-frame &ldquo;video&rdquo;,
-        ensuring permutation-invariant encoding.
-        Camera poses are injected via Pl&uuml;cker ray maps concatenated channel-wise with image latents.
-        The resulting view tokens are concatenated along the temporal dimension,
-        and only the predicted query latent is used for decoding.
-        We also remove the temporal component of Rotary Positional Embeddings (RoPE) so the transformer cannot rely on frame order, 
-        making the model invariant to input order.
-        We fine-tune only the patch embedding layer and LoRA modules in the DiT backbone.
-      </p>
-    </div>
-  </div>
-</section>
-
-
-<!-- ==================== GALLERY ==================== -->
-<section class="section" id="gallery">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Gallery of Novel View Synthesis</h2>
-    <p class="subtitle is-6 has-text-centered has-text-grey mb-2">
-      Given sparse input views, our model synthesizes photorealistic novel views at arbitrary target poses.
-    </p>
-    <p class="has-text-centered is-size-7 has-text-grey mb-5">
-      <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;&middot;&nbsp;
-      <span style="color:#e74c3c;">&#9650;</span> red = predicted novel view
-    </p>
-
-    <div id="gallery-carousel" class="carousel results-carousel">
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_1.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_2.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_3.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_4.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_5.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_6.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_7.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/gallery/gallery_8.mp4" type="video/mp4">
-        </video>
+    <div class="abstract rv">
+      <h4>Abstract</h4>
+      <div>
+        <p>We tackle the problem of sparse novel view synthesis (NVS) using video diffusion models; given K (≈5) posed images of a scene, we predict the view from a target camera pose. Many prior approaches leverage generative image priors encoded via diffusion models. However, models trained on single images lack multi-view knowledge, and we instead argue that video models contain implicit multi-view knowledge and are therefore easier to adapt for NVS. Our key insight is to formulate sparse NVS as a low-frame-rate video completion task. However, one challenge is that sparse NVS is defined over an unordered set of input images, often too sparse to admit a meaningful order, so the models should be <em>invariant</em> to permutations of that input image set.</p>
+        <p>To this end, we present <b>FrameCrafter</b>, which adapts video models (naturally trained with coherent frame orderings) to permutation-invariant NVS through simple but effective architectural modifications, including per-frame latent encoding, query-centered camera conditioning and removal of temporal positional embeddings. Our results suggest that video models can be easily modified to “forget” about time with minimal supervision, producing state-of-the-art performance on sparse-view NVS benchmarks.</p>
       </div>
     </div>
   </div>
 </section>
 
-
-<!-- ==================== CONTINUOUS TRAJECTORY RENDERING ==================== -->
-<section class="section" id="trajectory">
-  <div class="container is-max-widescreen">
-    <h2 class="title is-3 has-text-centered">Continuous Trajectory Rendering</h2>
-    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
-      <p>
-        Although each target view is generated <em>independently</em> as a separate forward pass,
-        densely sampling cameras along a smooth trajectory and concatenating the results
-        produces coherent, temporally consistent videos.
-        This demonstrates that the strong 3D priors from video diffusion
-        ensure cross-view consistency even without explicit temporal modeling.
-      </p>
-      <p class="is-size-7 has-text-grey mt-2">
-        <span style="color:#3273dc;">&#9650;</span> blue = input views &nbsp;
-      </p>
-    </div>
-
-    <div id="trajectory-carousel" class="carousel results-carousel" style="max-width:850px; margin:0 auto;">
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous0.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous1.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous2.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous3.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous4.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous5.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="item">
-        <video autoplay controls muted loop playsinline style="width:100%;">
-          <source src="./static/video/continuous/continuous6.mp4" type="video/mp4">
-        </video>
-      </div>
-    </div>
+<!-- ============================== IDEA (scrollytelling) ============================== -->
+<section class="sec story" id="idea">
+  <div class="wrap">
+    <div class="kicker">01 · The idea</div>
+    <h2 class="title">Novel view synthesis is<br>low-frame-rate video completion</h2>
+    <p class="lede">Scroll to see how a video model, trained to fill in missing frames of ordered clips, becomes a model that completes a missing <span class="c-orange">view</span> from an unordered set of <span class="c-blue">posed photos</span>.</p>
   </div>
-</section>
-
-
-<!-- ==================== COMPARISONS ==================== -->
-<section class="section has-background-light" id="comparisons">
-  <div class="container is-max-widescreen">
-    <h2 class="title is-3 has-text-centered">Qualitative Comparisons</h2>
-    <p class="subtitle is-6 has-text-centered has-text-grey mb-5">
-      All outputs are center-cropped to 480&times;480 for fair comparison.
-    </p>
-
-    <!-- Scene selector tabs -->
-    <div class="tabs is-centered is-toggle is-toggle-rounded mb-5" id="comparison-tabs">
-      <ul>
-        <li class="is-active" data-target="comp-scene1"><a>Scene 1</a></li>
-        <li data-target="comp-scene2"><a>Scene 2</a></li>
-        <li data-target="comp-scene3"><a>Scene 3</a></li>
-        <li data-target="comp-scene4"><a>Scene 4</a></li>
-        <li data-target="comp-scene5"><a>Scene 5</a></li>
-        <li data-target="comp-scene6"><a>Scene 6</a></li>
-      </ul>
-    </div>
-
-    <!-- Scene 1 -->
-    <div class="comparison-panel" id="comp-scene1">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s1_input0.png">
-        <img src="./static/images/comparison/s1_input1.png">
-        <img src="./static/images/comparison/s1_input2.png">
-        <img src="./static/images/comparison/s1_input3.png">
-        <img src="./static/images/comparison/s1_input4.png">
-        <img src="./static/images/comparison/s1_input5.png">
+  <div class="wide" style="max-width:1280px">
+    <div class="story-grid">
+      <div class="story-steps" id="storySteps">
+        <div class="step" data-step="0"><div>
+          <div class="num">STEP 1 / 5</div>
+          <h3>Video models complete videos.</h3>
+          <p>A video diffusion model learns to generate frames that stay consistent with the rest of a clip. To do this well, it has to know how a scene looks as the camera moves, so it has learned a lot of multi-view geometry along the way.</p>
+        </div></div>
+        <div class="step" data-step="1"><div>
+          <div class="num">STEP 2 / 5</div>
+          <h3>Sparse views are a very low-frame-rate video.</h3>
+          <p>Replace the dense clip with <span class="c-blue">K≈6 posed photos</span> taken far apart, and ask for the frame at a new <span class="c-orange">query camera</span>. Sparse-view NVS now looks just like completing a missing frame.</p>
+        </div></div>
+        <div class="step" data-step="2"><div>
+          <div class="num">STEP 3 / 5</div>
+          <h3>But a set of photos has no order.</h3>
+          <p>Sparse captures are often too far apart to admit a meaningful sequence. A video model indexes frames by time, so feeding the same photos in a different order hands each one a different time index and can change the answer.</p>
+        </div></div>
+        <div class="step" data-step="3"><div>
+          <div class="num">STEP 4 / 5</div>
+          <h3>So we make the model forget time.</h3>
+          <p>Each view is encoded on its own, cameras are expressed relative to the query, and temporal positions are zeroed out. The views become an <b>unordered set</b>, tied together only by their camera rays.</p>
+        </div></div>
+        <div class="step" data-step="4" style="min-height:120vh"><div>
+          <div class="num">STEP 5 / 5</div>
+          <h3>…and complete the missing view.</h3>
+          <p>The video DiT attends jointly over all views; the query latent is the only output we keep. Keep scrolling to run the denoising steps: the model's clean-image estimate goes from blurry layout to sharp detail.</p>
+        </div></div>
       </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <!-- Target 1 -->
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s1_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s1_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s1_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s1_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <!-- Target 2 -->
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s1_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s1_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s1_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s1_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scene 2 -->
-    <div class="comparison-panel is-hidden" id="comp-scene2">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s2_input0.png">
-        <img src="./static/images/comparison/s2_input1.png">
-        <img src="./static/images/comparison/s2_input2.png">
-        <img src="./static/images/comparison/s2_input3.png">
-        <img src="./static/images/comparison/s2_input4.png">
-        <img src="./static/images/comparison/s2_input5.png">
-      </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s2_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s2_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s2_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s2_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s2_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s2_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s2_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s2_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scene 3 -->
-    <div class="comparison-panel is-hidden" id="comp-scene3">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s3_input0.png">
-        <img src="./static/images/comparison/s3_input1.png">
-        <img src="./static/images/comparison/s3_input2.png">
-        <img src="./static/images/comparison/s3_input3.png">
-        <img src="./static/images/comparison/s3_input4.png">
-        <img src="./static/images/comparison/s3_input5.png">
-      </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s3_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s3_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s3_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s3_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s3_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s3_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s3_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s3_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scene 4 -->
-    <div class="comparison-panel is-hidden" id="comp-scene4">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s4_input0.png">
-        <img src="./static/images/comparison/s4_input1.png">
-        <img src="./static/images/comparison/s4_input2.png">
-        <img src="./static/images/comparison/s4_input3.png">
-        <img src="./static/images/comparison/s4_input4.png">
-        <img src="./static/images/comparison/s4_input5.png">
-      </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s4_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s4_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s4_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s4_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s4_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s4_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s4_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s4_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scene 5 -->
-    <div class="comparison-panel is-hidden" id="comp-scene5">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s5_input0.png">
-        <img src="./static/images/comparison/s5_input1.png">
-        <img src="./static/images/comparison/s5_input2.png">
-        <img src="./static/images/comparison/s5_input3.png">
-        <img src="./static/images/comparison/s5_input4.png">
-        <img src="./static/images/comparison/s5_input5.png">
-      </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s5_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s5_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s5_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s5_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s5_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s5_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s5_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s5_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Scene 6 -->
-    <div class="comparison-panel is-hidden" id="comp-scene6">
-      <div class="comp-input-strip mb-4">
-        <img src="./static/images/comparison/s6_input0.png">
-        <img src="./static/images/comparison/s6_input1.png">
-        <img src="./static/images/comparison/s6_input2.png">
-        <img src="./static/images/comparison/s6_input3.png">
-        <img src="./static/images/comparison/s6_input4.png">
-        <img src="./static/images/comparison/s6_input5.png">
-      </div>
-      <div class="has-text-centered is-size-7 has-text-grey mb-5">6 Input Views</div>
-
-      <div class="columns is-variable is-6">
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 1</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s6_t1_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s6_t1_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s6_t1_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s6_t1_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-        <div class="column is-half">
-          <h4 class="title is-6 has-text-centered mb-3">Target View 2</h4>
-          <div class="comp-grid-2x2">
-            <figure class="comp-cell comp-img-gt"><img src="./static/images/comparison/s6_t2_gt.png"><figcaption style="color:#48c774;"><b>Ground Truth</b></figcaption></figure>
-            <figure class="comp-cell comp-img-ours"><img src="./static/images/comparison/s6_t2_ours.png"><figcaption style="color:#3273dc;"><b>Ours</b></figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s6_t2_seva.png"><figcaption>SEVA</figcaption></figure>
-            <figure class="comp-cell"><img src="./static/images/comparison/s6_t2_lvsm.png"><figcaption>LVSM</figcaption></figure>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-
-<!-- ==================== VARYING NUMBER OF INPUT VIEWS ==================== -->
-<section class="section" id="num-views">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">NVS with Varying Number of Input Views</h2>
-    <div class="content has-text-centered" style="max-width:800px; margin:0 auto;">
-      <p>
-        Although trained with a fixed number of input views,
-        our model generalizes to different numbers of inputs at test time.
-        Below we show the same target view generated from K = 3, 4, 5, and 6 input views.
-      </p>
-    </div>
-
-    <div class="columns is-multiline is-variable is-2 is-centered">
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2">K = 3</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
-            <source src="./static/video/num_views/K3.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2">K = 4</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
-            <source src="./static/video/num_views/K4.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2">K = 5</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
-            <source src="./static/video/num_views/K5.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2">K = 6</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
-            <source src="./static/video/num_views/K6.mp4" type="video/mp4">
-          </video>
+      <div class="story-stage-wrap">
+        <div class="story-stage" id="storyStage">
+          <div class="ring"></div>
+          <div class="dit"><span>Video DiT · no temporal RoPE</span></div>
+          <div class="film" data-film="top"></div>
+          <div class="film" data-film="bot"></div>
+          <div class="label"><span id="storyLabel"><b>Video clip</b> · ordered frames</span><span id="storyLabel2"></span></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-
-<!-- ==================== ABLATIONS ==================== -->
-<section class="section" id="ablations">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Visual Ablations</h2>
-    <div class="content" style="max-width:800px; margin:0 auto;">
-      <p>
-        We visualize the effect of key design choices on the same target view.
-        Each example shows the 6 input views and the ground-truth target,
-        followed by ablation variants:
-        (a)&nbsp;w/o per-view encoding, (b)&nbsp;w/o pixel unshuffle,
-        and (c)&nbsp;our full model.
-      </p>
-      <p>
-        Without per-view independent encoding, the causal VAE entangles information across frames,
-        producing severely corrupted outputs that bear little resemblance to the target view.
-        Without pixel unshuffle, the ray map geometry is lost during downsampling,
-        leading to plausible but inaccurately posed generations that fail to align with the target camera.
-      </p>
+<!-- ============================== METHOD ============================== -->
+<section class="sec" id="method">
+  <div class="wrap">
+    <div class="kicker">02 · Method</div>
+    <h2 class="title">Three simple changes turn a video model into a multi-view model</h2>
+    <p class="lede">We start from Wan2.1-I2V-14B. Each input view is encoded by the frozen video VAE, concatenated with a Plücker ray map of its camera, and all view tokens (plus a zero latent for the query) are processed by the DiT. Only the patch embedding and LoRA modules are trained; only the query latent is decoded and supervised.</p>
+    <div class="fig-card rv">
+      <img src="./static/fig/method.png" alt="FrameCrafter architecture: per-view VAE encoding, Plücker ray maps, DiT with LoRA, query latent decoded" data-zoom>
+      <div class="fig-cap">Each input image is encoded independently by a frozen video VAE and channel-concatenated with its Plücker ray map. View tokens are concatenated along the (former) temporal axis; the last token is the query. Click to enlarge.</div>
     </div>
 
-    <!-- Example 1 -->
-    <div class="ablation-example mb-6">
-      <div class="ablation-input-grid mb-3">
-        <div class="ablation-input-left">
-          <div class="columns is-mobile is-multiline is-variable is-1 mb-0">
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_0.png" class="ablation-input" alt="Input 1"></div>
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_1.png" class="ablation-input" alt="Input 2"></div>
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_2.png" class="ablation-input" alt="Input 3"></div>
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_3.png" class="ablation-input" alt="Input 4"></div>
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_4.png" class="ablation-input" alt="Input 5"></div>
-            <div class="column is-one-third"><img src="./static/images/ablation/input_view_5.png" class="ablation-input" alt="Input 6"></div>
+    <div class="changes">
+      <!-- change 1 -->
+      <div class="change rv">
+        <div class="no">1</div>
+        <h3>Per-view VAE encoding</h3>
+        <p>A causal video VAE mixes neighbouring frames and compresses time by 4×. We encode each view as its own <b>1-frame “video”</b>, exactly as image-to-video models already treat the first frame.</p>
+        <div class="viz">
+          <div class="ctrl-row" style="justify-content:center;margin-bottom:6px">
+            <div class="seg" id="vaeSeg"><button data-m="causal">Causal video VAE</button><button data-m="ours" class="on">Per-view (ours)</button></div>
           </div>
-          <div class="has-text-centered is-size-7 has-text-grey">6 Input Views</div>
+          <svg id="vaeSvg" viewBox="0 0 300 150" aria-label="VAE encoding diagram"></svg>
         </div>
-        <div class="ablation-input-right">
-          <img src="./static/images/ablation/gt_frame.png" class="ablation-input ablation-gt" alt="GT Target">
-          <div class="has-text-centered is-size-7" style="color:#48c774; font-weight:600;">Target (GT)</div>
-        </div>
+        <div class="res" id="vaeRes">Without per-view encoding, PSNR drops from <b>15.69</b> to <b>11.50</b>: the single most important change.</div>
       </div>
-      <div class="columns is-variable is-2">
-        <div class="column is-one-third">
-          <figure class="image ablation-cell">
-            <img src="./static/images/ablation/generated_frame_no_SE.png" alt="w/o per-view encoding">
-            <figcaption>(a) w/o Per-View Encoding</figcaption>
-          </figure>
+      <!-- change 2 -->
+      <div class="change rv">
+        <div class="no">2</div>
+        <h3>Query-centered cameras</h3>
+        <p>Defining the world frame by the <i>first</i> input ties every camera to input order. We put the origin at the <span class="c-orange">query camera</span> and scale inputs to unit mean distance.</p>
+        <div class="viz">
+          <div class="ctrl-row" style="justify-content:center;margin-bottom:6px">
+            <span class="small muted">origin:</span>
+            <div class="seg" id="camSeg"><button data-m="first">First input</button><button data-m="query" class="on">Query (ours)</button></div>
+            <button class="chip-btn" id="camShuffle"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Shuffle</button>
+          </div>
+          <svg id="camSvg" viewBox="0 0 300 190" style="overflow:hidden" aria-label="Camera coordinate frame diagram"></svg>
         </div>
-        <div class="column is-one-third">
-          <figure class="image ablation-cell">
-            <img src="./static/images/ablation/generated_frame_no_shuffle.png" alt="w/o pixel unshuffle">
-            <figcaption>(b) w/o Pixel Unshuffle</figcaption>
-          </figure>
-        </div>
-        <div class="column is-one-third">
-          <figure class="image ablation-cell ablation-ours">
-            <img src="./static/images/ablation/generated_frame.png" alt="Ours (full model)">
-            <figcaption>(c) <b>Ours (Full Model)</b></figcaption>
-          </figure>
-        </div>
+        <div class="res" id="camRes">With the query as origin, reordering the inputs leaves every coordinate unchanged.</div>
       </div>
-    </div>
-
-  </div>
-</section>
-
-
-<!-- ==================== PERMUTATION INVARIANCE ==================== -->
-<section class="section has-background-light" id="permutation">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Permutation Invariance</h2>
-    <div class="content" style="max-width:800px; margin:0 auto;">
-      <p>
-        A key design goal is invariance to the ordering of input views.
-        Below we show outputs from 10 random permutations of the same input set.
-        With our permutation-invariant designs, the generated target views are virtually identical
-        regardless of input order,
-        whereas model with temporal positional encoding produce noticeably different outputs.
-      </p>
-    </div>
-
-    <div class="ablation-input-grid mb-4">
-      <div class="ablation-input-left">
-        <div class="columns is-mobile is-multiline is-variable is-1 mb-0">
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_00.png" class="ablation-input" alt="Input 1"></div>
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_01.png" class="ablation-input" alt="Input 2"></div>
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_02.png" class="ablation-input" alt="Input 3"></div>
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_03.png" class="ablation-input" alt="Input 4"></div>
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_04.png" class="ablation-input" alt="Input 5"></div>
-          <div class="column is-one-third"><img src="./static/images/permutation/input_view_05.png" class="ablation-input" alt="Input 6"></div>
+      <!-- change 3 -->
+      <div class="change rv">
+        <div class="no">3</div>
+        <h3>No temporal positions</h3>
+        <p>3D RoPE gives every token a time index. We zero out its temporal component, so attention can only tell views apart by their camera rays, not by their slot in the sequence.</p>
+        <div class="viz">
+          <div class="ctrl-row" style="justify-content:center;margin-bottom:8px">
+            <div class="seg" id="ropeSeg"><button data-m="rope">3D RoPE</button><button data-m="ours" class="on">No time (ours)</button></div>
+            <button class="chip-btn" id="ropeShuffle"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Shuffle</button>
+          </div>
+          <div id="ropeTokens" style="position:relative;height:88px"></div>
+          <div class="small muted" id="ropeMsg" style="text-align:center;min-height:42px;line-height:1.4"></div>
         </div>
-        <div class="has-text-centered is-size-7 has-text-grey">6 Input Views</div>
-      </div>
-      <div class="ablation-input-right">
-        <img src="./static/images/permutation/target_frame.png" class="ablation-input ablation-gt" alt="GT Target">
-        <div class="has-text-centered is-size-7" style="color:#48c774; font-weight:600;">Target (GT)</div>
+        <div class="res">Removing temporal RoPE also <b>improves</b> quality: PSNR 15.30 → 15.69, LPIPS 0.265 → 0.246.</div>
       </div>
     </div>
 
-    <div class="columns is-variable is-4">
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2">With Temporal RoPE (not permutation-invariant)</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px;">
-            <source src="./static/video/permutation/perm_frame_original_rope.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-      <div class="column is-half">
-        <div class="has-text-centered">
-          <p class="has-text-weight-semibold mb-2" style="color:#3273dc;">Ours (permutation-invariant)</p>
-          <video autoplay controls muted loop playsinline style="width:100%; border-radius:6px; border:2px solid #3273dc;">
-            <source src="./static/video/permutation/perm_frame_zero_rope.mp4" type="video/mp4">
-          </video>
-        </div>
-      </div>
-    </div>
-
-    <!-- Per-pixel std across permutations -->
-    <div class="has-text-centered mt-5">
-      <img src="./static/images/perm_std.png" style="width:80%; border-radius:6px;" alt="Per-pixel standard deviation across permutations">
+    <div class="plucker rv">
+      <h3 style="margin-top:34px">What the model sees: image latents + Plücker ray maps</h3>
+      <p class="sub-p small" style="margin-bottom:12px">Each view carries a per-pixel Plücker ray map <span class="mono">[d, o×d]</span> (pixel-unshuffled to latent resolution, so no ray detail is lost). Because the world frame sits at the query camera, the query's moment map <span class="mono">o×d</span> is identically zero.</p>
+      <div class="pl-grid" id="plGrid"></div>
     </div>
   </div>
 </section>
 
-
-<!-- ==================== DATA EFFICIENCY ==================== -->
-<section class="section has-background-light" id="data-efficiency">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Data Efficiency</h2>
-    <div class="columns is-vcentered">
-      <div class="column is-half">
-        <div class="content">
-          <p>
-            Our model demonstrates remarkable data efficiency.
-            Even when trained on only <b>20 scenes</b>, it surpasses EscherNet trained on 10K scenes.
-            Performance improves consistently as training data increases,
-            demonstrating that video diffusion priors provide a strong geometric foundation
-            that requires minimal multi-view supervision to unlock.
-          </p>
+<!-- ============================== DENOISING ============================== -->
+<section class="sec" id="denoise">
+  <div class="wrap">
+    <div class="kicker">03 · Inside the sampler</div>
+    <h2 class="title">Watch a novel view emerge</h2>
+    <p class="lede">We recorded all 50 sampling steps of FrameCrafter for a held-out target view. Drag the slider or press play. Within the first step the model already knows the layout of the unseen view; the remaining steps add detail, which shows up as better LPIPS.</p>
+  </div>
+  <div class="wide">
+    <div class="stage-panel rv">
+      <div class="scene-chips" id="dnChips"></div>
+      <div class="dn">
+        <div>
+          <div class="main" id="dnMain"><img id="dnImg" alt="denoising step"><div class="hud" id="dnHud">step 1 / 50</div></div>
+          <div class="scrub">
+            <button class="play" id="dnPlay" aria-label="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
+            <input type="range" min="0" max="49" value="0" id="dnRange" aria-label="denoising step">
+            <div class="seg dark" id="dnSeg"><button data-m="x0" class="on">Predicted final image</button><button data-m="zt">Current noisy sample</button></div>
+          </div>
+          <div class="strip" id="dnStrip"></div>
+        </div>
+        <div class="side">
+          <div class="row-label"><span class="k">6 input views</span><span>query = unseen camera</span></div>
+          <div class="inputs6" id="dnInputs"></div>
+          <div class="mini">
+            <figure><img id="dnFinal" alt="final prediction"><figcaption style="color:#ff9d66" id="dnFinalCap">FrameCrafter (step 50)</figcaption></figure>
+            <figure><img id="dnGT" alt="ground truth"><figcaption style="color:#6fd6a3">Ground truth</figcaption></figure>
+          </div>
+          <div class="dn-chart">
+            <div class="row-label"><span>predicted final image vs. ground truth, per step</span></div>
+            <svg id="dnChart" viewBox="0 0 440 200" aria-label="PSNR and LPIPS per denoising step"></svg>
+          </div>
         </div>
       </div>
-      <div class="column is-half has-text-centered">
-        <img src="./static/images/data_scaling.png" style="max-width:100%; border-radius:6px;" alt="Data scaling curve">
-        <p class="is-size-7 has-text-grey mt-2">Performance vs. number of training scenes.</p>
+      <div class="dn-explain">
+        <div><b class="c-dn1">Predicted final image</b> <span class="mono">x̂₀</span>. At each step the network looks at the current noisy sample and predicts the flow velocity <span class="mono">v</span>; from it we can read off its current guess of the finished image, <span class="mono">x̂₀ = z<sub>t</sub> − σ<sub>t</sub>·v</span>. This is what the model “believes” the novel view looks like at that point.</div>
+        <div><b class="c-dn2">Current noisy sample</b> <span class="mono">z<sub>t</sub></span>. The image the sampler is actually holding, a blend <span class="mono">(1−σ<sub>t</sub>)·x̂₀ + σ<sub>t</sub>·noise</span>. Wan's shifted schedule keeps the noise level σ<sub>t</sub> high for most steps, so it looks like noise until roughly the last 15 steps.</div>
+        <div><b>Why PSNR goes down.</b> Early guesses are blurry averages, which PSNR rewards. As sampling commits to sharp detail, LPIPS (perceptual error) improves while PSNR dips: the usual perception–distortion trade-off. Metrics use the paper's 480×480 center crop.</div>
       </div>
     </div>
   </div>
 </section>
 
-
-<!-- ==================== FUTURE WORK ==================== -->
-<section class="section" id="future-work">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Future Work</h2>
-    <div class="content" style="max-width:800px; margin:0 auto;">
-      <p>
-        Our current pipeline reprocesses all input context views through the DiT backbone
-        at every denoising step, resulting in O(N&sup2;) self-attention cost that scales quadratically
-        with the number of inputs.
-        A promising future direction is to encode the input views <em>once</em> and
-        inject them into the denoising process via cross-attention, reducing the per-step
-        cost to O(N) and enabling the model to scale to many more input views
-        without a proportional increase in compute.
-      </p>
+<!-- ============================== RESULTS ============================== -->
+<section class="sec" id="results">
+  <div class="wrap">
+    <div class="kicker">04 · Results</div>
+    <h2 class="title">Sparse-view novel view synthesis</h2>
+    <p class="lede">Six <span class="c-blue">posed input photos</span> in, a <span class="c-orange">novel view</span> out, on DL3DV benchmark scenes and unseen DL3DV-2K scenes. Pick a scene and a target camera, then move the mouse across the image to compare against the held-out ground truth. Drag the 3D view to orbit the capture rig.</p>
+  </div>
+  <div class="wide">
+    <div class="stage-panel rv" id="gallery">
+      <div class="scene-chips" id="galChips"></div>
+      <div class="viewer">
+        <div class="rig" id="galRig">
+          <div class="legend"><i style="background:#3b82f6"></i>input views<br><i style="background:#f97316"></i>target views</div>
+          <div class="hint">drag to orbit · click an orange camera</div>
+        </div>
+        <div class="mainview">
+          <div class="wipe" id="galWipe">
+            <img id="galGT" alt="ground truth">
+            <div class="top"><img id="galGen" alt="FrameCrafter"></div>
+            <div class="handle"></div>
+            <span class="lab l gt">Ground truth</span><span class="lab r ours">FrameCrafter</span>
+          </div>
+          <div class="row-label"><span class="q">target views (generated)</span><span id="galMeta"></span></div>
+          <div class="thumbs" id="galTargets"></div>
+          <div class="row-label"><span class="k">input views</span><span id="galSet">DL3DV benchmark · 480×832</span></div>
+          <div class="thumbs inputs" id="galInputs"></div>
+        </div>
+      </div>
     </div>
-    <div class="has-text-centered">
-      <img src="./static/images/future.png" style="width:75%; border-radius:6px;" alt="Future work: cross-attention architecture">
+  </div>
+
+  <div class="wrap">
+    <h3 class="sub-h">Rendering continuous camera paths</h3>
+    <p class="sub-p">FrameCrafter predicts one view per forward pass. Sampling cameras densely along a path and generating each frame <b>independently</b> still yields a smooth, consistent video: the frames agree because the model has a consistent 3D picture of the scene, not because of any temporal smoothing. <span class="c-blue">Blue</span> markers are the 6 input frames; everything else is generated.</p>
+  </div>
+  <div class="wide">
+    <div class="stage-panel rv" id="theater">
+      <div class="scene-chips" id="trChips"></div>
+      <div class="theater">
+        <div>
+          <div class="wipe" id="trWipe">
+            <video id="trGen" muted loop playsinline preload="metadata"></video>
+            <div class="top" id="trTop" style="display:none"><video id="trGT" muted loop playsinline preload="none"></video></div>
+            <div class="handle" style="display:none"></div>
+            <span class="lab l gt" style="display:none">Real capture</span><span class="lab r ours" style="display:none">FrameCrafter</span>
+            <span class="badge-gen" id="trBadge">generated</span>
+          </div>
+          <div class="tl" id="trTL"><div class="track"></div><div class="head" id="trHead"></div></div>
+        </div>
+        <div class="side">
+          <div class="rig" id="trRig">
+            <div class="legend"><i style="background:#3b82f6"></i>input views<br><i style="background:#f97316"></i>rendered camera</div>
+            <div class="hint">drag to orbit</div>
+          </div>
+          <div class="ctrl-row">
+            <div class="seg dark" id="trSeg"><button data-m="gen" class="on">FrameCrafter</button><button data-m="cmp">Compare to real capture</button></div>
+          </div>
+          <div class="row-label"><span class="k">6 input views (light up when passed)</span><span id="trMeta"></span></div>
+          <div class="thumbs inputs" id="trInputs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h3 class="sub-h">Comparison with prior methods</h3>
+    <p class="sub-p">Against <b>SEVA</b> (image diffusion, ~80K training scenes), <b>Aether</b> (camera-controlled video diffusion) and <b>LVSM</b> (regression). FrameCrafter recovers structures visible only in small parts of the inputs, while SEVA can lose geometric consistency, Aether misaligns the viewpoint, and LVSM blurs. Outputs are center-cropped to 480×480 for a fair comparison.</p>
+  </div>
+  <div class="wide">
+    <div class="stage-panel rv">
+      <div class="cmp">
+        <div>
+          <div class="row-label" style="margin-bottom:8px"><span>scene</span></div>
+          <div class="cmp-scenes" id="cmpScenes"></div>
+          <div class="row-label" style="margin:16px 0 8px"><span>target view</span></div>
+          <div class="seg dark" id="cmpT"><button data-t="1" class="on">Target 1</button><button data-t="2">Target 2</button></div>
+        </div>
+        <div>
+          <div class="ctrl-row" style="margin-bottom:12px">
+            <span class="small muted">compare FrameCrafter with</span>
+            <div class="seg dark" id="cmpM"><button data-m="seva" class="on">SEVA</button><button data-m="aether">Aether</button><button data-m="lvsm">LVSM</button><button data-m="gt">Ground truth</button></div>
+          </div>
+          <div class="cmp-main">
+            <div class="wipe" id="cmpWipe">
+              <img id="cmpBase" alt="baseline">
+              <div class="top"><img id="cmpOurs" alt="FrameCrafter"></div>
+              <div class="handle"></div>
+              <span class="lab l" id="cmpBaseLab">SEVA</span><span class="lab r ours">FrameCrafter</span>
+            </div>
+            <div>
+              <div class="row-label" style="margin-bottom:8px"><span class="k">6 input views</span></div>
+              <div class="cmp-inputs" id="cmpInputs"></div>
+            </div>
+          </div>
+          <div class="cmp-row" id="cmpRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h3 class="sub-h">Quantitative results</h3>
+    <p class="sub-p">With only 1K training scenes, FrameCrafter (Wan2.1-14B) outperforms SEVA on PSNR, LPIPS and DreamSim on DL3DV and is best on PSNR, LPIPS and DreamSim on Mip-NeRF 360. On the same CogVideoX-5B backbone, our recipe already improves over Aether on nearly every metric, and moving to a stronger video backbone helps across the board.</p>
+    <div class="ctrl-row" style="margin-bottom:12px;justify-content:space-between">
+      <div class="seg" id="qSeg"><button data-m="6" class="on">6 input views</button><button data-m="3">3 input views</button></div>
+      <span class="legend-rank">best <span style="background:#ffd2c2">1st</span><span style="background:#ffe3c8">2nd</span><span style="background:#fff1c9">3rd</span> among generative methods</span>
+    </div>
+    <div class="tbl-wrap rv" id="qTable"></div>
+    <p class="tbl-note" id="qNote"></p>
+
+    <h3 class="sub-h">In the wild</h3>
+    <p class="sub-p">Captures with COLMAP-estimated poses, including motion-blurred and over-exposed inputs and aerial views. FrameCrafter stays robust beyond curated benchmarks.</p>
+    <div class="itw rv">
+      <img src="./static/fig/inthewild_1.png" alt="in-the-wild result 1" loading="lazy" data-zoom>
+      <img src="./static/fig/inthewild_2.png" alt="in-the-wild result 2" loading="lazy" data-zoom>
+      <img src="./static/fig/inthewild_3.png" alt="in-the-wild result 3" loading="lazy" data-zoom>
+      <img src="./static/fig/inthewild_4.png" alt="in-the-wild result 4" loading="lazy" data-zoom>
     </div>
   </div>
 </section>
 
+<!-- ============================== ANALYSIS ============================== -->
+<section class="sec" id="analysis">
+  <div class="wrap">
+    <div class="kicker">05 · Analysis</div>
+    <h2 class="title">Order shouldn't matter, and with FrameCrafter it doesn't</h2>
+    <p class="lede">We feed the same 6 views in 10 different orders. Keeping temporal RoPE, the prediction drifts with the order. With FrameCrafter, the 10 outputs are virtually identical. Press shuffle, or switch to the deviation map to see where pixels change.</p>
 
-<!-- ==================== CITATION ==================== -->
-<section class="section has-background-light" id="citation">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Citation</h2>
-    <div class="content" style="max-width:700px; margin:0 auto;">
-      <p class="has-text-centered has-text-grey">
-        If you find this work useful, please consider citing:
-      </p>
-      <pre style="border-radius:8px; padding:1.2rem; font-size:0.85rem; background:#f5f5f5; overflow-x:auto;">@inproceedings{wu2026framecrafter,
+    <div class="card rv">
+      <div class="perm-ctrl">
+        <div class="ctrl-row">
+          <button class="btn" id="permBtn" style="padding:7px 16px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Shuffle input order</button>
+          <button class="chip-btn" id="permAuto">❚❚ Auto</button>
+          <span class="permid" id="permId">order 1 / 10 · [1 2 3 4 5 6]</span>
+        </div>
+        <div class="seg" id="permSeg"><button data-m="img" class="on">Prediction</button><button data-m="diff">Deviation from mean</button></div>
+      </div>
+      <div class="perm-inputs" id="permInputs"></div>
+      <div class="perm-outs">
+        <figure><div class="ph"><img id="permRope" alt="with temporal RoPE"></div><figcaption><b>With temporal RoPE</b><span class="muted mono small" id="permRopeStd">per-pixel std 7.29</span></figcaption></figure>
+        <figure class="ours"><div class="ph"><img id="permOurs" alt="FrameCrafter"></div><figcaption><b class="c-orange">FrameCrafter</b><span class="muted mono small">per-pixel std 0.26</span></figcaption></figure>
+      </div>
+      <p class="small muted" style="margin:12px 0 0">192×336 models, one DL3DV benchmark scene; per-pixel std over the 10 orderings in 8-bit RGB. The labels in the corner are burned into the original renders.</p>
+    </div>
+
+    <div class="two" style="margin-top:22px">
+      <div class="card rv">
+        <h3>Spread across 10 input orderings</h3>
+        <p class="small muted">Mean ± std across permutations, DL3DV benchmark (Table 3 of the paper).</p>
+        <svg class="bars" id="permBars" viewBox="0 0 520 290"></svg>
+        <p class="small muted" style="margin:6px 0 0">Mean PSNR also improves, 15.61 → 16.21, and LPIPS 0.254 → 0.224 (temporal RoPE → ours).</p>
+      </div>
+      <div class="card rv">
+        <h3>Why not just pick a good order?</h3>
+        <p class="small muted">Train and evaluate on views in their original video order (192×336, DL3DV).</p>
+        <table class="res" style="margin-top:8px">
+          <tr><th>Training setting</th><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th><th>DreamSim ↓</th></tr>
+          <tr><td>Ordered inputs</td><td>15.04</td><td>0.292</td><td>0.276</td><td>0.136</td></tr>
+          <tr class="ours"><td>Permutation-invariant (ours)</td><td>15.69</td><td>0.326</td><td>0.246</td><td>0.114</td></tr>
+        </table>
+        <p class="callout small">Even on the ordered model's home turf, permutation-invariant training wins. Sparse views rarely lie on a smooth path, and every reordering of a training sample is a valid new sample, a factorially larger training set for free.</p>
+      </div>
+    </div>
+
+    <h3 class="sub-h">Data efficiency: the prior comes from video</h3>
+    <div class="two">
+      <div class="card rv"><svg class="chart" id="dataChart" viewBox="0 0 520 330"></svg></div>
+      <div style="align-self:center">
+        <p class="sub-p">Trained on just <b>20 scenes</b>, FrameCrafter already beats EscherNet trained on 10K scenes, <b>500× less data</b>. Performance keeps rising with more scenes.</p>
+        <p class="sub-p">The lightweight training mostly teaches the model the sparse-view format and camera conditioning; the multi-view reasoning itself appears to have emerged during large-scale video pretraining. Compared to SEVA, training uses 7.8× fewer trainable parameters, 30× fewer iterations and 80× less multi-view data.</p>
+      </div>
+    </div>
+
+    <h3 class="sub-h">Ablations</h3>
+    <p class="sub-p">Same inputs, same target. Without per-view encoding the causal VAE entangles the views and the output collapses. Without pixel-unshuffled rays the image looks plausible but is rendered from the wrong pose.</p>
+    <div class="abl-grid rv">
+      <figure><div class="ins">
+        <img src="./static/images/ablation/input_view_0.png" alt="input 1"><img src="./static/images/ablation/input_view_1.png" alt="input 2"><img src="./static/images/ablation/input_view_2.png" alt="input 3"><img src="./static/images/ablation/input_view_3.png" alt="input 4"><img src="./static/images/ablation/input_view_4.png" alt="input 5"><img src="./static/images/ablation/input_view_5.png" alt="input 6">
+      </div><figcaption class="c-blue">6 input views</figcaption></figure>
+      <figure><img src="./static/images/ablation/generated_frame_no_SE.png" alt="without per-view encoding"><figcaption>✗ per-view encoding</figcaption></figure>
+      <figure><img src="./static/images/ablation/generated_frame_no_shuffle.png" alt="without pixel unshuffle"><figcaption>✗ pixel unshuffle</figcaption></figure>
+      <figure class="ours"><img src="./static/images/ablation/generated_frame.png" alt="full model"><figcaption class="c-orange"><b>Full model</b></figcaption></figure>
+      <figure class="gt"><img src="./static/images/ablation/gt_frame.png" alt="ground truth"><figcaption class="c-green">Ground truth</figcaption></figure>
+    </div>
+    <div class="tbl-wrap rv" style="margin-top:18px">
+      <table class="res">
+        <tr><th>Variant (192×336, DL3DV)</th><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th><th>DreamSim ↓</th></tr>
+        <tr><td>✗ Per-view encoding</td><td>11.50</td><td>0.147</td><td>0.676</td><td>0.656</td></tr>
+        <tr><td>✗ Pixel unshuffle</td><td>13.53</td><td>0.212</td><td>0.359</td><td>0.129</td></tr>
+        <tr><td>✗ Target-only supervision</td><td>15.08</td><td>0.287</td><td>0.270</td><td>0.116</td></tr>
+        <tr class="sep"><td>w/ PRoPE</td><td>14.91</td><td>0.289</td><td>0.315</td><td>0.174</td></tr>
+        <tr><td>w/ original 3D RoPE</td><td>15.30</td><td>0.300</td><td>0.265</td><td>0.122</td></tr>
+        <tr class="ours sep"><td>Full model</td><td>15.69</td><td>0.326</td><td>0.246</td><td>0.114</td></tr>
+      </table>
+    </div>
+
+    <h3 class="sub-h">Any number of inputs</h3>
+    <p class="sub-p">Trained with 6 inputs, the model generalizes to other set sizes at test time. Each clip is rendered frame by frame along a camera path from K input views.</p>
+    <div class="kgrid rv">
+      <figure><video data-src="./static/video/num_views/K3.mp4" muted loop playsinline preload="none"></video><figcaption>K = 3</figcaption></figure>
+      <figure><video data-src="./static/video/num_views/K4.mp4" muted loop playsinline preload="none"></video><figcaption>K = 4</figcaption></figure>
+      <figure><video data-src="./static/video/num_views/K5.mp4" muted loop playsinline preload="none"></video><figcaption>K = 5</figcaption></figure>
+      <figure><video data-src="./static/video/num_views/K6.mp4" muted loop playsinline preload="none"></video><figcaption>K = 6</figcaption></figure>
+    </div>
+
+    <h3 class="sub-h">More numbers</h3>
+    <div class="three-tbl rv">
+      <div class="card">
+        <h4>Multi-target prediction</h4>
+        <p>Continue training with mixed m-to-n splits (3–9 inputs, T=10): generating several views jointly stops hurting quality. 192×336, DL3DV, PSNR / LPIPS.</p>
+        <table class="res">
+          <tr><th>Setting</th><th>Before</th><th>After</th></tr>
+          <tr><td>6→1</td><td>15.69 / 0.246</td><td>16.27 / 0.226</td></tr>
+          <tr><td>6→2</td><td>14.84 / 0.347</td><td>16.20 / 0.229</td></tr>
+          <tr><td>6→3</td><td>14.62 / 0.419</td><td>16.42 / 0.223</td></tr>
+          <tr><td>6→4</td><td>14.18 / 0.511</td><td>16.23 / 0.225</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h4>Steps vs. quality</h4>
+        <p>6-view DL3DV on one A6000. Already strong at 10 steps; trajectory-based video baselines are far slower.</p>
+        <table class="res">
+          <tr><th>Method</th><th>LPIPS</th><th>DS</th><th>Time</th></tr>
+          <tr><td>ViewCrafter</td><td>0.443</td><td>0.181</td><td>~247s</td></tr>
+          <tr><td>GEN3C + VGGT</td><td>0.333</td><td>0.099</td><td>~1460s</td></tr>
+          <tr><td>SEVA</td><td>0.253</td><td>0.088</td><td>~24s</td></tr>
+          <tr class="ours"><td>Ours · 10 steps</td><td>0.254</td><td>0.089</td><td>~42s</td></tr>
+          <tr class="ours"><td>Ours · 50 steps</td><td>0.223</td><td>0.066</td><td>~177s</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h4>3D consistency</h4>
+        <p>Reconstruct each generated view together with the inputs using MapAnything; compare its geometry to the reconstruction obtained with the real target view.</p>
+        <table class="res">
+          <tr><th></th><th>AbsRel ↓</th><th>RMSE ↓</th><th>Chamfer ↓</th></tr>
+          <tr><td>SEVA</td><td>0.110</td><td>0.857</td><td>0.251</td></tr>
+          <tr class="ours"><td>Ours</td><td>0.073</td><td>0.789</td><td>0.176</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== DISCUSSION ============================== -->
+<section class="sec" id="discussion">
+  <div class="wrap">
+    <div class="kicker">06 · Discussion</div>
+    <h2 class="title">Do video world models know about time?</h2>
+    <p class="quote rv">We were surprised by the ease with which such models can be tuned to be permutation-invariant, losing any sense of temporal dynamics. Current models might capture more “multi-view” knowledge about the world than the dynamics of how it evolves over time.</p>
+    <p class="quote-src">From the conclusion. At the very least, temporal knowledge is surprisingly easy to unlearn.</p>
+    <p class="sub-p" style="margin-top:28px">Practically, this points to a scalable recipe: instead of curating ever-larger posed multi-view datasets, treat multi-view synthesis as a lightweight specialization of video foundation models, and let gains in video pretraining flow directly into novel view synthesis.</p>
+    <div class="future rv">
+      <div>
+        <h3>What's next: encode the inputs once</h3>
+        <p class="sub-p">Today every input view is re-processed by the DiT at every denoising step, so self-attention cost grows quadratically with the number of inputs. Encoding the inputs once and injecting them through cross-attention would make the per-step cost linear and let the model scale to many more views.</p>
+      </div>
+      <img src="./static/images/future.png" alt="future work: process inputs once and reuse across denoising steps" loading="lazy" data-zoom>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== VIDEO + POSTER ============================== -->
+<section class="sec" id="video">
+  <div class="wrap">
+    <div class="kicker">07 · Overview video</div>
+    <h2 class="title">Three-minute narrated overview</h2>
+    <div class="video-box rv">
+      <video id="teaserVideo" controls playsinline preload="none" poster="./static/fig/video_poster.jpg">
+        <source src="./static/video/teaser_video.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="small muted" style="margin-top:10px">🔊 With audio narration.</p>
+
+    <div class="poster-row" style="margin-top:70px">
+      <a href="./static/poster.pdf" target="_blank" rel="noopener"><img src="./static/fig/poster.jpg" alt="ECCV 2026 poster" loading="lazy"></a>
+      <div>
+        <h3>ECCV 2026 poster</h3>
+        <p class="sub-p">The whole story on one page: problem setup, the three changes, results, ablations and future work.</p>
+        <a class="btn" href="./static/poster.pdf" target="_blank" rel="noopener">Download poster (PDF)</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== BIBTEX ============================== -->
+<section class="sec" id="bibtex">
+  <div class="wrap">
+    <div class="kicker">Citation</div>
+    <h2 class="title">BibTeX</h2>
+    <div class="bib-wrap">
+      <button class="copy" id="copyBib">Copy</button>
+<pre class="bib" id="bib">@inproceedings{wu2026framecrafter,
   title={FrameCrafter: Novel View Synthesis as Video Completion},
   author={Wu, Qi and Vuong, Khiem and Jeon, Minsik and Narasimhan, Srinivasa and Ramanan, Deva},
   booktitle={European Conference on Computer Vision},
@@ -758,102 +568,12 @@
   </div>
 </section>
 
-
-<!-- ==================== FOOTER ==================== -->
-<footer class="footer pt-4 pb-4">
-  <div class="container">
-    <div class="content has-text-centered">
-      <p class="is-size-7 has-text-grey">
-        This website template is borrowed from <a href="https://nerfies.github.io/" target="_blank">Nerfies</a>.
-      </p>
-    </div>
+<footer>
+  <div class="wrap">
+    <p><b>Acknowledgments.</b> We thank Prof. Shubham Tulsiani for insightful discussions and perspectives, and Nikhil Keetha and other members of Deva's lab at CMU for valuable feedback and suggestions. This work used Bridges-2 at Pittsburgh Supercomputing Center through allocation cis250177p from the ACCESS program, supported by NSF grants #2138259, #2138286, #2138307, #2137603 and #2138296. This work was supported by the Intelligence Advanced Research Projects Activity (IARPA) via Department of Interior/Interior Business Center (DOI/IBC) contract number 140D0423C0074. The U.S. Government is authorized to reproduce and distribute reprints for Governmental purposes notwithstanding any copyright annotation thereon. Disclaimer: The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies or endorsements, either expressed or implied, of IARPA, DOI/IBC, or the U.S. Government.</p>
   </div>
 </footer>
 
-
-<!-- ==================== SCRIPTS ==================== -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-
-  // Teaser video/figure toggle
-  document.querySelectorAll('#teaser-toggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#teaser-toggle button').forEach(b => {
-        b.classList.remove('is-dark');
-        b.classList.add('is-light');
-      });
-      btn.classList.remove('is-light');
-      btn.classList.add('is-dark');
-
-      const target = btn.getAttribute('data-target');
-      document.getElementById('teaser-video-wrap').style.display = 'none';
-      document.getElementById('teaser-figure-wrap').style.display = 'none';
-      document.getElementById(target).style.display = '';
-
-      if (target === 'teaser-video-wrap') {
-        document.getElementById('teaser-video').play();
-      }
-    });
-  });
-
-  // Comparison tab switching
-  const tabs = document.querySelectorAll('#comparison-tabs li');
-  const tabList = Array.from(tabs);
-
-  function switchToTab(index) {
-    tabs.forEach(t => t.classList.remove('is-active'));
-    tabList[index].classList.add('is-active');
-
-    document.querySelectorAll('.comparison-panel').forEach(p => p.classList.add('is-hidden'));
-    const target = tabList[index].getAttribute('data-target');
-    document.getElementById(target).classList.remove('is-hidden');
-
-    document.querySelectorAll('#' + target + ' video').forEach(v => {
-      v.currentTime = 0;
-      v.play();
-    });
-  }
-
-  tabs.forEach((tab, i) => {
-    tab.addEventListener('click', () => {
-      switchToTab(i);
-      clearInterval(autoRotate);
-    });
-  });
-
-  // Auto-rotate scenes every 5 seconds
-  let currentTab = 0;
-  let autoRotate = setInterval(() => {
-    currentTab = (currentTab + 1) % tabList.length;
-    switchToTab(currentTab);
-  }, 5000);
-
-  // Lazy-play videos when they enter viewport
-  const videos = document.querySelectorAll('video[autoplay]');
-  const videoObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.play();
-      } else {
-        entry.target.pause();
-      }
-    });
-  }, { threshold: 0.25 });
-  videos.forEach(v => videoObserver.observe(v));
-
-  // Smooth scroll for TOC links
-  document.querySelectorAll('.toc-nav a').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      const target = document.querySelector(link.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
-  });
-
-});
-</script>
-
+<div class="lightbox" id="lightbox"><img alt=""></div>
 </body>
 </html>
