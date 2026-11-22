@@ -112,27 +112,8 @@
   <div class="wrap">
     <div class="kicker">01 · Method</div>
     <h2 class="title">Novel view synthesis as low-frame-rate video completion</h2>
-  </div>
-  <div class="wide" style="max-width:1240px">
-    <div class="story rv">
-      <div class="story-stage" id="storyStage">
-        <div class="ring"></div>
-        <div class="dit"><span>Video DiT · no temporal RoPE</span></div>
-        <div class="film" data-film="top"></div>
-        <div class="film" data-film="bot"></div>
-        <div class="label"><span id="storyLabel"><b>Image diffusion</b> · still images</span><span id="storyLabel2"></span></div>
-      </div>
-      <ol class="story-steps" id="storySteps">
-        <li class="step" data-step="0"><b>Image models learn multi-view from scratch.</b><p>Pretrained on still images, they need large multi-view datasets (~80K scenes for SEVA).</p><i class="pg"></i></li>
-        <li class="step" data-step="1"><b>Video models have already seen it.</b><p>A video is a camera moving through a scene, so video pretraining already provides a strong multi-view prior.</p><i class="pg"></i></li>
-        <li class="step" data-step="2"><b>But video models assume time.</b><p>A causal VAE merges neighbouring frames and temporal RoPE indexes them by time. <span class="c-blue">Sparse photos</span> have no order.</p><i class="pg"></i></li>
-        <li class="step" data-step="3"><b>So we remove the temporal bias.</b><p>Each photo is VAE-encoded on its own (one latent frame per view, hence low-frame-rate) and temporal RoPE is removed.</p><i class="pg"></i></li>
-        <li class="step" data-step="4"><b>Then we complete the missing view.</b><p>Given a <span class="c-orange">query camera</span>, the DiT attends over all views and denoises only the query.</p><i class="pg"></i></li>
-      </ol>
-    </div>
-  </div>
-  <div class="wrap">
-    <div class="fig-card rv" style="margin-top:22px">
+    <p class="lede">Image diffusion models have to learn multi-view geometry from large multi-view datasets (~80K scenes for SEVA). Video models have already seen cameras move through scenes, so they bring a stronger prior, but they assume time. We remove that temporal bias: each photo is VAE-encoded on its own (one latent frame per view, hence <i>low-frame-rate</i>) and temporal RoPE is dropped. Given a <span class="c-orange">query camera</span>, the model then completes the missing view.</p>
+    <div class="fig-card rv">
       <img class="narrow" src="./static/fig/method_poster.png" alt="FrameCrafter architecture: sparse unordered input views with poses, each encoded by the frozen video VAE; a zero latent with the query pose; concatenation; DiT blocks with LoRA; the query latent decoded into the predicted novel view" data-zoom>
       <div class="fig-cap">Each view is VAE-encoded on its own and concatenated with its camera as a Plücker ray map; the query starts from a zero latent with the query camera. Only the query latent is decoded (Wan2.1-I2V-14B with LoRA).</div>
     </div>
@@ -146,7 +127,7 @@
           <div class="ctrl-row" style="justify-content:center;margin-bottom:6px">
             <div class="seg" id="vaeSeg"><button data-m="causal">Causal video VAE</button><button data-m="ours" class="on">Per-view (ours)</button></div>
           </div>
-          <svg id="vaeSvg" viewBox="0 0 300 150" aria-label="VAE encoding diagram"></svg>
+          <svg id="vaeSvg" viewBox="0 0 300 172" aria-label="VAE encoding diagram"></svg>
         </div>
         <div class="res" id="vaeRes">Without it, PSNR drops from <b>15.69</b> to <b>11.50</b>.</div>
       </div>
@@ -158,9 +139,8 @@
           <div class="ctrl-row" style="justify-content:center;margin-bottom:6px">
             <span class="small muted">origin:</span>
             <div class="seg" id="camSeg"><button data-m="first">First input</button><button data-m="query" class="on">Query (ours)</button></div>
-            <button class="chip-btn" id="camShuffle"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Shuffle</button>
           </div>
-          <svg id="camSvg" viewBox="0 0 300 190" style="overflow:hidden" aria-label="Camera coordinate frame diagram"></svg>
+          <svg id="camSvg" viewBox="0 0 300 220" style="overflow:hidden" aria-label="Camera coordinate frame diagram"></svg>
         </div>
         <div class="res" id="camRes">With the query as origin, reordering the inputs leaves every coordinate unchanged.</div>
       </div>
@@ -171,10 +151,9 @@
         <div class="viz">
           <div class="ctrl-row" style="justify-content:center;margin-bottom:8px">
             <div class="seg" id="ropeSeg"><button data-m="rope">3D RoPE</button><button data-m="ours" class="on">No time (ours)</button></div>
-            <button class="chip-btn" id="ropeShuffle"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Shuffle</button>
           </div>
-          <div id="ropeTokens" style="position:relative;height:88px"></div>
-          <div class="small muted" id="ropeMsg" style="text-align:center;min-height:42px;line-height:1.4"></div>
+          <div id="ropeTokens" style="position:relative;height:84px"></div>
+          <div class="rope-msg" id="ropeMsg"></div>
         </div>
         <div class="res">It also <b>improves</b> quality: PSNR 15.30 → 15.69.</div>
       </div>
@@ -210,8 +189,7 @@
               <div class="handle"></div>
               <span class="lab l gt">Ground truth</span><span class="lab r ours">FrameCrafter</span>
             </div>
-            <div class="row-label"><span class="q">target views (generated)</span><span id="galMeta"></span></div>
-            <div class="thumbs" id="galTargets"></div>
+            <div class="tnav"><button id="galPrev" aria-label="previous view">‹</button><span class="q" id="galCount">view 1 / 6</span><button id="galNext" aria-label="next view">›</button><span class="meta" id="galMeta"></span></div>
             <div class="row-label"><span class="k">input views</span><span id="galSet">DL3DV benchmark</span></div>
             <div class="thumbs inputs" id="galInputs"></div>
           </div>
@@ -263,29 +241,23 @@
   <div class="wide mid">
     <div class="stage-panel rv">
       <div class="cmp">
-        <div>
-          <div class="row-label" style="margin-bottom:8px"><span>scene</span></div>
-          <div class="cmp-scenes" id="cmpScenes"></div>
-          <div class="row-label" style="margin:16px 0 8px"><span>target view</span></div>
-          <div class="seg dark" id="cmpT"><button data-t="1" class="on">Target 1</button><button data-t="2">Target 2</button></div>
+        <div class="cmp-ctrl">
+          <label>scene <div class="seg dark" id="cmpS"></div></label>
+          <label>view <div class="seg dark" id="cmpT"><button data-t="1" class="on">1</button><button data-t="2">2</button></div></label>
+          <label>compare FrameCrafter with <span class="sel"><select id="cmpM" aria-label="baseline"><option value="seva">SEVA</option><option value="aether">Aether</option><option value="lvsm">LVSM</option><option value="gt">Ground truth</option></select></span></label>
         </div>
-        <div>
-          <div class="ctrl-row" style="margin-bottom:12px">
-            <span class="small muted">compare FrameCrafter with</span>
-            <div class="seg dark" id="cmpM"><button data-m="seva" class="on">SEVA</button><button data-m="aether">Aether</button><button data-m="lvsm">LVSM</button><button data-m="gt">Ground truth</button></div>
-          </div>
-          <div class="cmp-main">
-            <div class="wipe" id="cmpWipe">
-              <img id="cmpBase" alt="baseline">
-              <div class="top"><img id="cmpOurs" alt="FrameCrafter"></div>
-              <div class="handle"></div>
-              <span class="lab l" id="cmpBaseLab">SEVA</span><span class="lab r ours">FrameCrafter</span>
-            </div>
-            <div>
-              <div class="row-label" style="margin-bottom:8px"><span class="k">6 input views</span></div>
-              <div class="cmp-inputs" id="cmpInputs"></div>
-            </div>
-          </div>
+        <div class="wipe" id="cmpWipe">
+          <img id="cmpBase" alt="baseline">
+          <div class="top"><img id="cmpOurs" alt="FrameCrafter"></div>
+          <div class="handle"></div>
+          <span class="lab l" id="cmpBaseLab">SEVA</span><span class="lab r ours">FrameCrafter</span>
+        </div>
+        <div class="cmp-ins">
+          <div class="row-label"><span class="k">6 input views</span></div>
+          <div class="cmp-inputs" id="cmpInputs"></div>
+        </div>
+        <div class="cmp-all">
+          <div class="row-label"><span>all methods</span></div>
           <div class="cmp-row" id="cmpRow"></div>
         </div>
       </div>
@@ -300,22 +272,23 @@
     <div class="tbl-wrap rv" id="qTable"></div>
     <p class="tbl-note" id="qNote"></p>
 
-    <h3 class="sub-h" id="extreme">Extreme camera paths</h3>
+    <h3 class="sub-h" id="extreme">Extreme cameras</h3>
     <p class="sub-p">Aerial views, low passes and views turned away from the photos. No ground truth exists for these cameras, so we compare side by side: every method gets the same 6 posed photos and renders each view on its own.</p>
   </div>
   <div class="wide mid">
     <div class="stage-panel rv" id="paths">
       <div class="scene-chips" id="pathChips"></div>
+      <div class="seg dark path-views" id="pathViews"></div>
+      <div class="path-row" id="pathRow"></div>
       <div class="paths">
-        <div class="paths-side">
-          <div class="rig" id="pathRig">
-            <div class="legend"><i style="background:#3b82f6"></i>input photos<br><i style="background:#f97316"></i>target cameras</div>
-            <div class="hint">drag to orbit</div>
-          </div>
+        <div class="rig" id="pathRig">
+          <div class="legend"><i style="background:#3b82f6"></i>input photos<br><i style="background:#f97316"></i>target cameras</div>
+          <div class="hint">drag to orbit · click a camera</div>
+        </div>
+        <div>
           <div class="row-label"><span class="k" id="pathInLab">input photos</span></div>
           <div class="thumbs inputs" id="pathInputs"></div>
         </div>
-        <div class="paths-grid-wrap"><div class="paths-grid" id="pathGrid"></div></div>
       </div>
       <p class="paths-note" id="pathNote"></p>
     </div>
@@ -328,7 +301,8 @@
     <div class="kicker">03 · Analysis</div>
     <h2 class="title">Order shouldn't matter, and with FrameCrafter it doesn't</h2>
     <p class="lede">The same 6 views in 10 different orders. With temporal RoPE the prediction drifts; with FrameCrafter the outputs are virtually identical.</p>
-
+  </div>
+  <div class="wide mid">
     <div class="perm-two">
       <div class="card rv">
         <div class="perm-ctrl">
@@ -348,7 +322,7 @@
       <div class="card rv">
         <h3>Spread across 10 input orderings</h3>
         <p class="small muted">Mean ± std over permutations, DL3DV (paper Table 3).</p>
-        <svg class="bars" id="permBars" viewBox="0 0 520 290"></svg>
+        <svg class="bars" id="permBars" viewBox="0 0 360 290"></svg>
       </div>
     </div>
   </div>
@@ -366,17 +340,12 @@
           <div class="scrub">
             <button class="play" id="dnPlay" aria-label="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
             <input type="range" min="0" max="49" value="0" id="dnRange" aria-label="denoising step">
-            <div class="seg dark" id="dnSeg"><button data-m="x0" class="on">Predicted final image</button><button data-m="zt">Current noisy sample</button></div>
           </div>
           <div class="strip" id="dnStrip"></div>
         </div>
         <div class="side">
           <div class="row-label"><span class="k">6 input views</span><span>query = unseen camera</span></div>
           <div class="inputs6" id="dnInputs"></div>
-          <div class="mini">
-            <figure><img id="dnFinal" alt="final prediction"><figcaption style="color:#ff9d66" id="dnFinalCap">FrameCrafter (step 50)</figcaption></figure>
-            <figure><img id="dnGT" alt="ground truth"><figcaption style="color:#6fd6a3">Ground truth</figcaption></figure>
-          </div>
           <div class="dn-chart">
             <div class="row-label"><span>predicted final image vs. ground truth, per step</span></div>
             <svg id="dnChart" viewBox="0 0 440 200" aria-label="PSNR and LPIPS per denoising step"></svg>
@@ -385,7 +354,6 @@
       </div>
       <div class="dn-explain">
         <div><b class="c-dn1">Predicted final image</b> <span class="mono">x̂₀ = z<sub>t</sub> − σ<sub>t</sub>·v</span>: the model's current guess of the finished view.</div>
-        <div><b class="c-dn2">Current noisy sample</b> <span class="mono">z<sub>t</sub></span>: what the sampler holds, mostly noise until the last ~15 steps.</div>
         <div><b>PSNR dips as LPIPS improves</b>: early guesses are blurry averages; sharp detail is penalized by PSNR but not by LPIPS.</div>
       </div>
     </div>

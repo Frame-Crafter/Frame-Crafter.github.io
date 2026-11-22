@@ -125,172 +125,48 @@ function wipe(el, start = 50) {
   return { set, get: () => p, enable(b) { enabled = b; el.style.cursor = b ? 'ew-resize' : 'default'; } };
 }
 
-/* ------------------------------------------------------------------ 01 story */
-function initStory() {
-  const stage = $('#storyStage');
-  const G = S + 'gallery/gym/', D = S + 'denoise/gym/';
-  const xs = Array.from({ length: 50 }, (_, i) => ({ src: `${D}x${String(i).padStart(2, '0')}.jpg` }));
-  onVisible(stage, v => { if (v && !xs.loaded) { xs.loaded = true; preload(xs.map(x => x.src)); } }, { rootMargin: '1200px' });
-  const cards = [];
-  for (let i = 0; i < 6; i++) {
-    const c = h('div', { class: 'st-card' },
-      h('div', { class: 'im' }, h('img', { src: G + `in${i}.jpg`, alt: '' }), h('img', { class: 'alt', src: i < 5 ? S + `story/v${i}.jpg` : G + `in${i}.jpg`, alt: '' })),
-      h('div', { class: 'tag' }, `t=${i}`));
-    stage.append(c); cards.push(c);
-  }
-  const qImg = h('img', { src: xs[0].src, alt: '', style: 'opacity:0' });
-  const qMark = h('div', { style: 'position:absolute;inset:0;display:grid;place-items:center;color:#ff9d66;font-family:var(--serif);font-size:44px;transition:opacity .4s' }, '?');
-  const q = h('div', { class: 'st-card query' }, h('div', { class: 'im' }, qImg, qMark), h('div', { class: 'tag' }, 'query'));
-  stage.append(q);
-  const films = $$('.film', stage), ring = $('.ring', stage), dit = $('.dit', stage);
-  const lab = $('#storyLabel'), lab2 = $('#storyLabel2');
-  let step = -1, shuffleTimer = null, order = [0, 1, 2, 3, 4, 5];
-
-  const place = (c, x, y, w, r = 0, o = 1) => {
-    c.style.width = w + 'px'; c.style.transform = `translate(${x}px, ${y}px) rotate(${r}deg)`; c.style.opacity = o;
-  };
-  const tag = (c, txt, cls = '') => { const t = $('.tag', c); t.textContent = txt; t.className = 'tag ' + cls; };
-  const AR = 480 / 832;
-
-  function layout() {
-    const W = stage.clientWidth, H = stage.clientHeight;
-    clearInterval(shuffleTimer); shuffleTimer = null;
-    films.forEach(f => (f.style.opacity = 0));
-    ring.style.opacity = 0; dit.style.opacity = 0; dit.style.transform = 'translate(-50%,-50%) scale(.9)';
-    cards.forEach(c => $('.alt', c).style.opacity = 0);
-    if (step === 0) {
-      // one still image: what an image model is pretrained on
-      const w = W * 0.4, x = (W - w) / 2, y = H * 0.44 - w * AR / 2;
-      cards.forEach((c, i) => { place(c, x + w * 0.3, y + w * AR * 0.2, w * 0.4, 0, i === 2 ? 1 : 0); $('.alt', c).style.opacity = 1; });
-      place(cards[2], x, y, w); tag(cards[2], 'one image');
-      place(q, x + w * 0.3, y + w * AR * 0.2, w * 0.4, 0, 0);
-      lab.innerHTML = '<b>Image diffusion</b> · pretrained on still images'; lab2.textContent = 'multi-view learned from ~80K scenes';
-    } else if (step === 1) {
-      // the same image is one frame of a video: the camera moves through the scene
-      const n = 5, gap = W * 0.012, w = (W * 0.9 - gap * (n - 1)) / n, ch = w * AR;
-      const x0 = (W - (n * w + (n - 1) * gap)) / 2, y = H * 0.46 - ch / 2;
-      films[0].style.top = (y - 22) + 'px'; films[1].style.top = (y + ch + 16) + 'px';
-      films.forEach(f => (f.style.opacity = 1));
-      cards.forEach((c, i) => { place(c, x0 + Math.min(i, 4) * (w + gap), y, w, 0, i < 5 ? 1 : 0); $('.alt', c).style.opacity = 1; tag(c, `t=${i}`); });
-      place(q, x0 + 4 * (w + gap), y, w, 0, 0);
-      lab.innerHTML = '<b>Video diffusion</b> · pretrained on moving cameras'; lab2.textContent = 'viewpoint changes seen at scale';
-    } else if (step === 2) {
-      const w = W * 0.2, ch = w * AR;
-      const slots = [[0.06, 0.12, -4], [0.37, 0.07, 3], [0.68, 0.13, -2], [0.08, 0.56, 3], [0.39, 0.6, -3], [0.7, 0.55, 4]];
-      const qx = W * 0.5 - w / 2, qy = H * 0.34 - ch / 2;
-      const apply = () => {
-        cards.forEach((c, i) => {
-          const sl = order.indexOf(i), [fx, fy, r] = slots[sl];
-          place(c, W * fx, H * fy + (sl < 3 ? -H * 0.02 : H * 0.08), w, r);
-          tag(c, `t=${sl}`, 'shuffled');
-        });
-      };
-      place(q, qx, H * 0.4, w * 0.9, 0, 0);
-      apply();
-      shuffleTimer = setInterval(() => { order = order.slice().sort(() => Math.random() - 0.5); apply(); }, 1500);
-      $$('.tag.shuffled', stage).forEach(t => (t.style.background = '#b91c1c'));
-      lab.innerHTML = '<b>6 sparse photos</b> · same set, new order'; lab2.textContent = 'new time indices, a different input';
-    } else {
-      const big = step === 4, w = W * (big ? 0.17 : 0.2), ch = w * AR;
-      const cx = W / 2, cy = H * 0.47, rx = W * 0.37, ry = H * 0.34;
-      ring.style.width = 2 * rx + 'px'; ring.style.height = 2 * ry + 'px'; ring.style.opacity = 1; ring.style.top = cy + 'px';
-      cards.forEach((c, i) => {
-        const a = -Math.PI / 2 + (i + 0.5) * (2 * Math.PI / 6);
-        place(c, cx + rx * Math.cos(a) - w / 2, cy + ry * Math.sin(a) - ch / 2, w);
-        tag(c, 't=0', 'zero');
-      });
-      const qw = big ? W * 0.36 : W * 0.22;
-      place(q, cx - qw / 2, cy - qw * AR / 2, qw, 0, big ? 1 : 0); tag(q, 'query · t=0', 'zero');
-      if (big) { dit.style.opacity = 1; dit.style.transform = 'translate(-50%,-50%) scale(1)'; dit.style.top = cy + 'px'; }
-      lab.innerHTML = big ? '<b>Denoising the query</b>' : '<b>An unordered set</b> · one latent per photo, all at t=0';
-      lab2.textContent = big ? '' : 'told apart only by their camera rays';
-    }
-    $$('.tag', stage).forEach(t => { if (!t.classList.contains('shuffled')) t.style.background = ''; });
-    qMark.style.fontSize = Math.max(18, q.getBoundingClientRect().width * 0.3) + 'px';
-    const filled = step === 4;
-    qImg.style.opacity = filled ? 1 : 0; qMark.style.opacity = filled ? 0 : 1; q.classList.toggle('filled', filled);
-  }
-
-  // compact stepper: auto-advances while on screen; clicking a step takes over
-  const steps = $$('.step', $('#storySteps'));
-  const DUR = [3400, 3800, 4600, 4200, 4200];
-  let sig = null, auto = !reduced, vis = false, t0 = 0, raf = 0;
-  getJSON(D + 'meta.json').then(m => (sig = m.sigmas));
-  const go = k => {
-    step = k; t0 = performance.now();
-    steps.forEach((x, i) => x.classList.toggle('on', i === k));
-    layout();
-  };
-  const tick = now => {
-    raf = requestAnimationFrame(tick);
-    if (!vis) return;
-    const p = clamp((now - t0) / DUR[step], 0, 1);
-    const pg = $('.pg', steps[step]); if (pg) pg.style.width = (auto ? 100 * p : 0) + '%';
-    if (step === 4) {
-      // run the 50 denoising steps in the first 70% of the slot, then hold the result
-      const k = Math.round(clamp(p / 0.7, 0, 1) * 49);
-      if (qImg.dataset.k !== String(k)) {
-        qImg.dataset.k = k; qImg.src = xs[k].src;
-        lab2.innerHTML = `step <b>${k + 1}</b> / 50` + (sig ? ` · σ = ${sig[k].toFixed(3)}` : '');
-      }
-    }
-    if (auto && p >= 1) go((step + 1) % 5);
-  };
-  steps.forEach((x, i) => x.addEventListener('click', () => { auto = false; go(i); }));
-  onVisible(stage, v => { vis = v; if (v) t0 = performance.now(); }, { threshold: 0.35 });
-  window.addEventListener('resize', () => { if (step >= 0) layout(); });
-  go(0);
-  raf = requestAnimationFrame(tick);
-}
-
 /* ------------------------------------------------------------------ 02 method widgets */
+// run fn every ms while el is on screen
+function whileVisible(el, fn, ms) {
+  let id = null;
+  onVisible(el, v => { clearInterval(id); id = v ? setInterval(fn, ms) : null; }, { threshold: 0.3 });
+}
+const shuffled = (a, ok) => { let o; do { o = a.slice().sort(() => Math.random() - 0.5); } while (!ok(o)); return o; };
+const arrowDefs = (...cs) => s('defs', {}, ...cs.map(([id, c]) => s('marker', { id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, s('path', { d: 'M0 0L10 5L0 10z', fill: c }))));
+
 function initVAE() {
   const svg = $('#vaeSvg'), G = S + 'gallery/gym/';
-  const fx = i => 18 + i * 56, FW = 44, FH = 26;
-  const defs = s('defs', {}, s('marker', { id: 'ah', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, s('path', { d: 'M0 0L10 5L0 10z', fill: '#8b93a3' })),
-    s('marker', { id: 'ahO', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, s('path', { d: 'M0 0L10 5L0 10z', fill: '#e8590c' })));
+  const fx = i => 6 + i * 58.5, FW = 54, FH = 32, cx = i => fx(i) + FW / 2;
+  const T = (x, y, size, fill, txt, o = {}) => s('text', Object.assign({ x, y, 'text-anchor': 'middle', 'font-size': size, fill, 'font-family': 'JetBrains Mono' }, o), txt);
+  const arrow = (x1, y1, x2, y2, c = '#8b93a3', head = true) => s('line', Object.assign({ x1, y1, x2, y2, stroke: c, 'stroke-width': 1.4 }, head ? { 'marker-end': `url(#${c === '#8b93a3' ? 'ah' : 'ahO'})` } : {}));
+  const lat = (x, w, fill) => s('rect', { x: x - w / 2, y: 100, width: w, height: 22, rx: 4, fill, stroke: '#1e3a8a', 'stroke-width': 1 });
+  const defs = arrowDefs(['ah', '#8b93a3'], ['ahO', '#e8590c']);
+  defs.append(s('linearGradient', { id: 'mix' }, s('stop', { offset: 0, 'stop-color': '#93b4f5' }), s('stop', { offset: 1, 'stop-color': '#f7b28a' })));
   svg.append(defs);
   for (let i = 0; i < 5; i++) {
-    svg.append(s('image', { href: G + `in${i}.jpg`, x: fx(i), y: 4, width: FW, height: FH, preserveAspectRatio: 'xMidYMid slice' }));
-    svg.append(s('rect', { x: fx(i), y: 4, width: FW, height: FH, rx: 3, fill: 'none', stroke: '#2563eb', 'stroke-width': 1.5 }));
+    svg.append(s('image', { href: G + `in${i}.jpg`, x: fx(i), y: 2, width: FW, height: FH, preserveAspectRatio: 'xMidYMid slice' }));
+    svg.append(s('rect', { x: fx(i), y: 2, width: FW, height: FH, rx: 3, fill: 'none', stroke: '#2563eb', 'stroke-width': 1.6 }));
   }
-  const lat = (x, y, w, fill) => s('rect', { x: x - w / 2, y, width: w, height: 18, rx: 3, fill, stroke: '#1e3a8a', 'stroke-width': 1 });
-  // ours
-  const ours = s('g', { class: 'vae-ours', style: 'transition:opacity .5s' });
+  // ours: one VAE call per view
+  const ours = s('g', { style: 'transition:opacity .5s' });
   for (let i = 0; i < 5; i++) {
-    const cx = fx(i) + FW / 2;
-    ours.append(s('path', { d: `M${cx - 14} 52 h28 l-5 18 h-18z`, fill: '#e9edf5', stroke: '#b7c0d1' }));
-    ours.append(s('text', { x: cx, y: 64, 'text-anchor': 'middle', 'font-size': 7.5, fill: '#5b6372', 'font-family': 'JetBrains Mono' }, 'VAE'));
-    ours.append(s('line', { x1: cx, y1: 32, x2: cx, y2: 50, stroke: '#8b93a3', 'stroke-width': 1.2, 'marker-end': 'url(#ah)' }));
-    ours.append(s('line', { x1: cx, y1: 72, x2: cx, y2: 92, stroke: '#8b93a3', 'stroke-width': 1.2, 'marker-end': 'url(#ah)' }));
-    ours.append(lat(cx, 95, 22, '#93b4f5'));
-    ours.append(s('text', { x: cx, y: 128, 'text-anchor': 'middle', 'font-size': 8, fill: '#3a3f48', 'font-family': 'JetBrains Mono' }, `z${i + 1}`));
+    ours.append(s('path', { d: `M${cx(i) - 20} 54 h40 l-6 24 h-28z`, fill: '#e9edf5', stroke: '#b7c0d1' }));
+    ours.append(T(cx(i), 70.5, 13, '#5b6372', 'VAE'));
+    ours.append(arrow(cx(i), 36, cx(i), 52), arrow(cx(i), 80, cx(i), 98));
+    ours.append(lat(cx(i), 26, '#93b4f5'), T(cx(i), 142, 15, '#3a3f48', `z${i + 1}`));
   }
-  ours.append(s('text', { x: 150, y: 146, 'text-anchor': 'middle', 'font-size': 9, fill: '#15935b', 'font-family': 'Inter', 'font-weight': 600 }, '5 views → 5 latents · each independent of the others'));
-  // causal
-  const causal = s('g', { class: 'vae-causal', style: 'transition:opacity .5s;opacity:0' });
-  causal.append(s('rect', { x: 14, y: 52, width: 272, height: 18, rx: 4, fill: '#fde4d4', stroke: '#f2b48f' }));
-  causal.append(s('text', { x: 150, y: 64, 'text-anchor': 'middle', 'font-size': 7.5, fill: '#9a3412', 'font-family': 'JetBrains Mono' }, 'causal 3D conv · feature cache · 4× temporal stride'));
-  for (let i = 0; i < 4; i++) {
-    const a = fx(i) + FW / 2, b = fx(i + 1) + FW / 2;
-    causal.append(s('path', { d: `M${a} 34 Q ${(a + b) / 2} 46 ${b - 4} 36`, fill: 'none', stroke: '#e8590c', 'stroke-width': 1.2, 'stroke-dasharray': '3 2', 'marker-end': 'url(#ahO)' }));
-  }
-  const c0 = fx(0) + FW / 2, c1 = (fx(1) + fx(4) + FW) / 2;
-  for (let i = 0; i < 5; i++) {
-    const cx = fx(i) + FW / 2;
-    causal.append(s('line', { x1: cx, y1: 32, x2: cx, y2: 50, stroke: '#8b93a3', 'stroke-width': 1.2 }));
-  }
-  causal.append(s('line', { x1: c0, y1: 72, x2: c0, y2: 92, stroke: '#8b93a3', 'stroke-width': 1.2, 'marker-end': 'url(#ah)' }));
-  for (let i = 1; i < 5; i++) {
-    const cx = fx(i) + FW / 2;
-    causal.append(s('line', { x1: cx, y1: 72, x2: c1 + (cx - c1) * 0.12, y2: 92, stroke: '#e8590c', 'stroke-width': 1.1, 'marker-end': 'url(#ahO)' }));
-  }
-  causal.append(lat(c0, 95, 22, '#93b4f5'));
-  causal.append(lat(c1, 95, 30, 'url(#mix)'));
-  defs.append(s('linearGradient', { id: 'mix' }, s('stop', { offset: 0, 'stop-color': '#93b4f5' }), s('stop', { offset: 1, 'stop-color': '#f7b28a' })));
-  causal.append(s('text', { x: c0, y: 128, 'text-anchor': 'middle', 'font-size': 8, fill: '#3a3f48', 'font-family': 'JetBrains Mono' }, 'z1'));
-  causal.append(s('text', { x: c1, y: 128, 'text-anchor': 'middle', 'font-size': 8, fill: '#3a3f48', 'font-family': 'JetBrains Mono' }, 'z2 = mix(f2…f5)'));
-  causal.append(s('text', { x: 150, y: 146, 'text-anchor': 'middle', 'font-size': 9, fill: '#b91c1c', 'font-family': 'Inter', 'font-weight': 600 }, '5 frames → 2 latents · order-dependent'));
+  ours.append(T(150, 167, 15, '#15935b', '5 views → 5 independent latents', { 'font-family': 'Inter', 'font-weight': 600 }));
+  // causal: one VAE call over the sequence
+  const causal = s('g', { style: 'transition:opacity .5s;opacity:0' });
+  const c0 = cx(0), c1 = (fx(1) + fx(4) + FW) / 2;
+  causal.append(s('rect', { x: 3, y: 54, width: 294, height: 24, rx: 5, fill: '#fde4d4', stroke: '#f2b48f' }));
+  causal.append(T(150, 70.5, 12.5, '#9a3412', 'causal 3D conv · 4× time stride'));
+  for (let i = 0; i < 5; i++) causal.append(arrow(cx(i), 36, cx(i), 54, '#8b93a3', false));
+  for (let i = 1; i < 5; i++) causal.append(arrow(cx(i), 80, c1 + (cx(i) - c1) * 0.15, 98, '#e8590c'));
+  causal.append(arrow(c0, 80, c0, 98));
+  causal.append(lat(c0, 26, '#93b4f5'), lat(c1, 36, 'url(#mix)'));
+  causal.append(T(c0, 142, 15, '#3a3f48', 'z1'), T(c1, 142, 15, '#3a3f48', 'z2 = mix(f2…f5)'));
+  causal.append(T(150, 167, 15, '#b91c1c', '5 frames → 2 mixed latents', { 'font-family': 'Inter', 'font-weight': 600 }));
   svg.append(ours, causal);
   segment($('#vaeSeg'), d => {
     const c = d.m === 'causal';
@@ -301,79 +177,70 @@ function initVAE() {
   });
 }
 
-async function initCams() {
-  const gal = await getJSON(S + 'data/gallery.json');
-  const g = gal.find(x => x.id === 'gym');
-  const qIdx = 6 + g.targets.indexOf(64);
-  const ids = [0, 1, 2, 3, 4, 5, qIdx];
-  const cams = ids.map(k => {
-    const c = g.c2w[k];
-    const p = [c[3], c[11]], f = [-c[2], -c[10]], n = Math.hypot(f[0], f[1]) || 1;
-    return { p, f: [f[0] / n, f[1] / n] };
+function initCams() {
+  // schematic capture: 6 inputs and the query on a ring around the scene, looking inward
+  const svg = $('#camSvg'), CX = 150, CY = 114, RX = 114, RY = 62;
+  const ANG = [-96, -40, 10, 116, 164, 214, 64], JIT = [8, -10, 6, -6, 10, -8, 0];
+  const cams = ANG.map((a, i) => {
+    const r = a * Math.PI / 180, x = CX + RX * Math.cos(r), y = CY + RY * Math.sin(r);
+    let fx = CX - x, fy = CY - y; const n = Math.hypot(fx, fy); fx /= n; fy /= n;
+    const j = JIT[i] * Math.PI / 180, c = Math.cos(j), sn = Math.sin(j);
+    return { x, y, f: [fx * c - fy * sn, fx * sn + fy * c], out: [-fx, -fy] };
   });
-  const svg = $('#camSvg');
-  const world = s('g', { style: 'transition:transform 1s cubic-bezier(.65,.02,.25,1)' });
-  // scale so the farthest camera from any candidate origin lands ~72px away
-  let far = 0;
-  cams.forEach(a => cams.forEach(b => { far = Math.max(far, Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1])); }));
-  const SC = 74 / far, SZ = 15 / SC, WD = 10 / SC;
+  svg.append(arrowDefs(['ahG', '#15935b'], ['ahR', '#dc2626']));
+  // static background grid; only the origin axes and the order numbers move
   const grid = s('g', {});
-  const gs = 22 / SC;
-  for (let i = -14; i <= 14; i++) {
-    grid.append(s('line', { x1: i * gs, y1: -14 * gs, x2: i * gs, y2: 14 * gs, stroke: '#e6e2da', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }));
-    grid.append(s('line', { x1: -14 * gs, y1: i * gs, x2: 14 * gs, y2: i * gs, stroke: '#e6e2da', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }));
-  }
-  world.append(grid);
+  for (let v = 0; v <= 300; v += 25) grid.append(s('line', { x1: v, y1: 0, x2: v, y2: 220, stroke: '#ebe7df', 'stroke-width': 1 }));
+  for (let v = 0; v <= 220; v += 25) grid.append(s('line', { x1: 0, y1: v, x2: 300, y2: v, stroke: '#ebe7df', 'stroke-width': 1 }));
+  svg.append(grid);
+  svg.append(s('rect', { x: CX - 22, y: CY - 15, width: 44, height: 30, rx: 6, fill: '#ebe7df', stroke: '#d4cfc4' }),
+    s('text', { x: CX, y: CY + 4.5, 'text-anchor': 'middle', 'font-size': 13, fill: '#8a8f99', 'font-family': 'Inter' }, 'scene'));
+  const L = 28, W = 13;
   const wedges = cams.map((c, i) => {
-    const [px, pz] = c.p, [fx, fz] = c.f, rx = -fz, rz = fx;
-    const a = [px + SZ * fx + WD * rx, pz + SZ * fz + WD * rz], b = [px + SZ * fx - WD * rx, pz + SZ * fz - WD * rz];
-    const q = i === 6;
-    const poly = s('polygon', { points: `${px},${pz} ${a} ${b}`, fill: q ? 'rgba(232,89,12,.18)' : 'rgba(37,99,235,.12)', stroke: q ? '#e8590c' : '#2563eb', 'stroke-width': 1.6, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' });
-    world.append(poly);
+    const [fx, fy] = c.f, rx = -fy, ry = fx, q = i === 6;
+    const a = [c.x + L * fx + W * rx, c.y + L * fy + W * ry], b = [c.x + L * fx - W * rx, c.y + L * fy - W * ry];
+    const poly = s('polygon', { points: `${c.x},${c.y} ${a} ${b}`, fill: q ? 'rgba(232,89,12,.22)' : 'rgba(37,99,235,.14)', stroke: q ? '#e8590c' : '#2563eb', 'stroke-width': 1.8, 'stroke-linejoin': 'round', style: 'transition:fill .4s' });
+    svg.append(poly);
     return poly;
   });
-  const origin = s('g', {},
-    s('line', { x1: 150, y1: 104, x2: 150, y2: 80, stroke: '#15935b', 'stroke-width': 2, 'marker-end': 'url(#ahG)' }),
-    s('line', { x1: 150, y1: 104, x2: 174, y2: 104, stroke: '#dc2626', 'stroke-width': 2, 'marker-end': 'url(#ahR)' }),
-    s('circle', { cx: 150, cy: 104, r: 3.5, fill: '#15171b' }),
-    s('text', { x: 156, y: 118, 'font-size': 9, fill: '#3a3f48', 'font-family': 'JetBrains Mono' }, 'origin'));
-  svg.append(s('defs', {},
-    s('marker', { id: 'ahG', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto' }, s('path', { d: 'M0 0L10 5L0 10z', fill: '#15935b' })),
-    s('marker', { id: 'ahR', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto' }, s('path', { d: 'M0 0L10 5L0 10z', fill: '#dc2626' }))));
-  svg.append(world, origin);
-  const readout = s('text', { x: 150, y: 184, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#3a3f48', 'font-family': 'JetBrains Mono' }, '');
-  svg.append(readout);
-  const legend = s('text', { x: 6, y: 12, 'font-size': 9, fill: '#6b7079', 'font-family': 'Inter' });
-  legend.append(s('tspan', { fill: '#2563eb' }, '▲ inputs  '), s('tspan', { fill: '#e8590c' }, '▲ query'));
-  svg.append(legend);
+  const spot = i => [cams[i].x + cams[i].out[0] * 16, cams[i].y + cams[i].out[1] * 16];
+  const badge = (txt, fill) => s('g', {}, s('circle', { r: 10.5, fill }),
+    s('text', { y: 4.6, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, fill: '#fff', 'font-family': 'Inter' }, txt));
+  const qb = badge('q', '#e8590c'); qb.setAttribute('transform', `translate(${spot(6)})`); svg.append(qb);
+  // badge k shows the number k+1 and sits next to camera order[k]
+  const nums = [0, 1, 2, 3, 4, 5].map(k => { const b = badge(String(k + 1), '#2563eb'); svg.append(b); return b; });
+  const axG = s('g', {});
+  axG.append(s('line', { x1: 0, y1: 0, x2: 0, y2: -34, stroke: '#15935b', 'stroke-width': 2.4, 'marker-end': 'url(#ahG)' }),
+    s('line', { x1: 0, y1: 0, x2: 34, y2: 0, stroke: '#dc2626', 'stroke-width': 2.4, 'marker-end': 'url(#ahR)' }),
+    s('circle', { r: 4, fill: '#15171b' }));
+  svg.append(axG);
+  const legend = s('text', { x: 4, y: 15, 'font-size': 13.5, fill: '#5b6372', 'font-family': 'Inter' });
+  legend.append(s('tspan', { fill: '#2563eb' }, '▲ inputs (by order)   '), s('tspan', { fill: '#e8590c' }, '▲ query'));
+  const readout = s('text', { x: 150, y: 212, 'text-anchor': 'middle', 'font-size': 14, 'font-family': 'JetBrains Mono', style: 'transition:fill .3s' }, '');
+  svg.append(legend, readout);
 
-  let mode = 'query', order = [0, 1, 2, 3, 4, 5];
+  let mode = 'query', order = [0, 1, 2, 3, 4, 5], ang = 0;
   function apply() {
-    const oi = mode === 'query' ? 6 : order[0];
-    const { p, f } = cams[oi];
-    const ang = Math.atan2(f[1], f[0]) * 180 / Math.PI;
-    const rot = -90 - ang;
-    world.style.transform = `translate(150px, 104px) rotate(${rot}deg) scale(${SC}) translate(${-p[0]}px, ${-p[1]}px)`;
-    wedges.forEach((w, i) => {
-      const isO = i === oi;
-      w.setAttribute('stroke-width', isO ? 3 : 1.6);
-      if (i < 6) w.setAttribute('fill', isO ? 'rgba(37,99,235,.35)' : 'rgba(37,99,235,.12)');
-    });
-    // query position in the current world frame
-    const qc = cams[6], R = -(Math.atan2(f[1], f[0]) + Math.PI / 2);
-    const dx = qc.p[0] - p[0], dz = qc.p[1] - p[1];
-    const x = dx * Math.cos(R) - dz * Math.sin(R), z = dx * Math.sin(R) + dz * Math.cos(R);
-    readout.textContent = mode === 'query' ? 'query camera at (0.00, 0.00): fixed' : `query camera at (${x.toFixed(2)}, ${(-z).toFixed(2)})`;
+    const oi = mode === 'query' ? 6 : order[0], o = cams[oi];
+    // the axes take the origin camera's position and viewing direction (shortest turn)
+    const target = Math.atan2(o.f[0], -o.f[1]) * 180 / Math.PI;
+    ang += ((target - ang) % 360 + 540) % 360 - 180;
+    axG.style.transform = `translate(${o.x}px, ${o.y}px) rotate(${ang}deg)`;
+    nums.forEach((b, k) => { const [x, y] = spot(order[k]); b.style.transform = `translate(${x}px, ${y}px)`; });
+    wedges.forEach((w, i) => { if (i < 6) w.setAttribute('fill', mode === 'first' && i === oi ? 'rgba(37,99,235,.45)' : 'rgba(37,99,235,.14)'); });
+    const q = cams[6], dx = q.x - o.x, dy = q.y - o.y, r = [-o.f[1], o.f[0]];
+    const X = (dx * r[0] + dy * r[1]) / 60, Z = (dx * o.f[0] + dy * o.f[1]) / 60;
+    readout.textContent = mode === 'query' ? 'query at (0.00, 0.00): fixed' : `query at (${X.toFixed(2)}, ${Z.toFixed(2)})`;
+    readout.setAttribute('fill', mode === 'query' ? '#15935b' : '#b91c1c');
     $('#camRes').innerHTML = mode === 'query'
-      ? 'With the query as origin, reordering the inputs leaves every coordinate unchanged.'
-      : 'The origin is whichever input comes first. <b>Shuffle</b> and every camera, including the query, gets new coordinates.';
+      ? 'The input order is reshuffled every few seconds. With the query as origin, no coordinate changes.'
+      : 'With the first input as origin, every reshuffle moves the origin, so every camera, including the query, gets new coordinates.';
   }
   segment($('#camSeg'), d => { mode = d.m; apply(); });
-  $('#camShuffle').addEventListener('click', () => {
-    let o; do { o = order.slice().sort(() => Math.random() - 0.5); } while (o[0] === order[0]);
-    order = o; apply();
-  });
+  whileVisible(svg, () => { order = shuffled(order, o => o[0] !== order[0]); apply(); }, 2600);
   apply();
+  // animate only after the first placement
+  requestAnimationFrame(() => [axG, ...nums].forEach(g => (g.style.transition = 'transform .9s cubic-bezier(.65,.02,.25,1)')));
 }
 
 function initRoPE() {
@@ -382,15 +249,15 @@ function initRoPE() {
   const toks = [];
   for (let i = 0; i < 7; i++) {
     const q = i === 6;
-    const t = h('div', { style: 'position:absolute;top:22px;left:0;transition:transform .7s cubic-bezier(.65,.02,.25,1)' },
-      q ? h('div', { style: 'border:2px dashed #e8590c;border-radius:6px;aspect-ratio:832/480;display:grid;place-items:center;color:#e8590c;font-family:var(--serif);font-size:20px;background:#fff' }, '?')
+    const t = h('div', { style: 'position:absolute;top:26px;left:0;transition:transform .7s cubic-bezier(.65,.02,.25,1)' },
+      q ? h('div', { style: 'border:2px dashed #e8590c;border-radius:6px;aspect-ratio:832/480;display:grid;place-items:center;color:#e8590c;font-family:var(--serif);font-size:22px;background:#fff' }, '?')
         : h('img', { src: G + `in${i}.jpg`, style: 'width:100%;aspect-ratio:832/480;object-fit:cover;border-radius:6px;border:2px solid #2563eb' }),
-      h('div', { class: 'tb', style: 'position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:#fff;padding:0 6px;border-radius:5px;white-space:nowrap;transition:background .3s' }, ''));
+      h('div', { class: 'tb' }, ''));
     box.append(t); toks.push(t);
   }
   const msg = $('#ropeMsg');
   function apply(flash = false) {
-    const W = box.clientWidth, gap = 6, w = (W - 6 * gap) / 7;
+    const W = box.clientWidth, gap = 5, w = (W - 6 * gap) / 7;
     toks.forEach((t, i) => {
       const slot = i === 6 ? 6 : order.indexOf(i);
       t.style.width = w + 'px';
@@ -398,20 +265,15 @@ function initRoPE() {
       const b = $('.tb', t);
       if (mode === 'rope') {
         b.textContent = `t=${slot}`;
-        const changed = flash && i < 6 && prevT.indexOf(i) !== slot;
-        b.style.background = changed ? '#dc2626' : '#2a2d34';
+        b.style.background = flash && i < 6 && prevT.indexOf(i) !== slot ? '#dc2626' : '#2a2d34';
       } else { b.textContent = 't=0'; b.style.background = '#15935b'; }
     });
     msg.innerHTML = mode === 'rope'
-      ? 'Each view’s time index is its slot in the sequence. <b>Shuffle</b>: same photos, new indices (red), so the model sees a different input.'
-      : 'Every token has t = 0. Order carries no information; views are told apart only by their camera rays.';
+      ? 'Each view’s time index is its position, so every reshuffle gives the same photos new indices (red): a different input.'
+      : 'Every view has t = 0, so reshuffling changes nothing; views are told apart only by their camera rays.';
   }
   segment($('#ropeSeg'), d => { mode = d.m; apply(); });
-  $('#ropeShuffle').addEventListener('click', () => {
-    prevT = order.slice();
-    let o; do { o = order.slice().sort(() => Math.random() - 0.5); } while (o.join() === order.join());
-    order = o; apply(true);
-  });
+  whileVisible(box, () => { prevT = order.slice(); order = shuffled(order, o => o.join() !== order.join()); apply(true); }, 2600);
   new ResizeObserver(() => apply()).observe(box);
   apply();
 }
@@ -421,14 +283,13 @@ function initDenoise() {
   const SC = [{ id: 'gym', label: 'Gym' }, { id: 'store', label: 'Appliance store' }, { id: 'steak', label: 'Steakhouse' }];
   const chips = $('#dnChips'), img = $('#dnImg'), hud = $('#dnHud'), range = $('#dnRange'), strip = $('#dnStrip'), chart = $('#dnChart');
   const marks = [0, 1, 3, 6, 10, 20, 35, 49];
-  let mode = 'x0', k = 0, frames = { x0: [], zt: [] }, meta = null, timer = null, cursor = null;
+  let k = 0, frames = [], meta = null, timer = null, cursor = null;
   const show = () => {
-    const list = frames[mode];
-    if (list[k]) img.src = list[k].src;
+    if (frames[k]) img.src = frames[k].src;
     let t = `step ${k + 1} / 50`;
     if (meta) {
       t += ` · noise σ = ${meta.sigmas[k].toFixed(2)}`;
-      if (mode === 'x0') t += ` · PSNR ${meta.psnr[k].toFixed(2)} dB · LPIPS ${meta.lpips[k].toFixed(3)}`;
+      t += ` · PSNR ${meta.psnr[k].toFixed(2)} dB · LPIPS ${meta.lpips[k].toFixed(3)}`;
     }
     hud.textContent = t;
     range.value = k;
@@ -477,15 +338,12 @@ function initDenoise() {
   }
   function load(id) {
     const D = S + `denoise/${id}/`;
-    frames.x0 = preload(Array.from({ length: 50 }, (_, i) => `${D}x${String(i).padStart(2, '0')}.jpg`));
-    frames.zt = preload(Array.from({ length: 50 }, (_, i) => `${D}z${String(i).padStart(2, '0')}.jpg`));
+    frames = preload(Array.from({ length: 50 }, (_, i) => `${D}x${String(i).padStart(2, '0')}.jpg`));
     meta = null; cursor = null;
     getJSON(D + 'meta.json').then(m => {
       meta = m; drawChart();
-      $('#dnFinalCap').textContent = `Ours · ${m.final_psnr.toFixed(2)} dB · LPIPS ${m.final_lpips.toFixed(3)}`;
       show();
     });
-    $('#dnFinal').src = D + 'final.jpg'; $('#dnGT').src = D + 'gt.jpg';
     const ins = $('#dnInputs'); ins.innerHTML = '';
     for (let i = 0; i < 6; i++) ins.append(h('img', { src: D + `in${i}.jpg`, alt: `input ${i + 1}` }));
     strip.innerHTML = '';
@@ -498,7 +356,6 @@ function initDenoise() {
     h('img', { src: S + `denoise/${sc.id}/final.jpg`, alt: '' }), sc.label)));
   range.addEventListener('input', () => { stop(); k = +range.value; show(); });
   $('#dnPlay').addEventListener('click', () => (timer ? stop() : play()));
-  segment($('#dnSeg'), d => { mode = d.m; show(); });
   let loaded = false;
   const ensure = () => { if (!loaded) { loaded = true; load('gym'); } };
   onVisible($('#denoise'), v => { if (v) ensure(); }, { rootMargin: '900px' });
@@ -506,53 +363,53 @@ function initDenoise() {
   onVisible($('#dnMain'), v => { if (v && !played) { ensure(); played = true; setTimeout(play, 600); } }, { threshold: 0.6 });
 }
 
-/* ------------------------------------------------------------------ 04 extreme camera paths */
+/* ------------------------------------------------------------------ 04 extreme cameras */
 async function initPaths() {
   const data = await getJSON(S + 'data/paths.json');
-  const chips = $('#pathChips'), grid = $('#pathGrid'), rigEl = $('#pathRig');
+  const chips = $('#pathChips'), views = $('#pathViews'), rowEl = $('#pathRow'), rigEl = $('#pathRig');
   const METHODS = data.methods;
-  let rig = null, frs = [], cur = null, row = -1;
-  onVisible(rigEl, async v => {
-    if (v && !rig) { rig = await makeRig(rigEl); if (rig) { rig.onPick = i => setRow(i); build(); } }
+  let rig = null, frs = [], cur = null, v = 0, near = false;
+  onVisible(rigEl, async vis => {
+    if (vis && !rig) { rig = await makeRig(rigEl); if (rig) { rig.onPick = i => setView(i); build(); } }
   }, { threshold: 0.01, rootMargin: '300px' });
+  // once the panel is close, fetch the other views of the scene so switching is instant
+  const warm = () => { if (near && cur) preload(cur.targets.flatMap((_, i) => METHODS.map(m => S + `paths/${cur.id}/${m.id}${i}.jpg`))); };
+  onVisible($('#paths'), vis => { if (vis && !near) { near = true; warm(); } }, { rootMargin: '600px' });
   function build() {
     if (!rig || !cur) return;
     rig.clear(); frs = [];
     const P = S + `paths/${cur.id}/`;
-    rig.path(cur.path, 0xf97316, 0.5);
     cur.inputs.forEach((c, i) => rig.frustum(c, { fovx: cur.fov_in[0], fovy: cur.fov_in[1], size: 0.12, color: 0x3b82f6, tex: P + `in${i}.jpg`, opacity: 0.92 }));
     cur.targets.forEach((t, i) => frs.push(rig.frustum(t.c2w, { fovx: t.fov[0], fovy: t.fov[1], size: 0.15, color: 0xf97316, tex: P + `ours${i}.jpg`, opacity: 0.95, idx: i })));
-    rig.margin = 0.12; rig.home_(cur.inputs.map(c => [c[3], c[7], c[11]]).concat(cur.path), { dist: 2.6, elev: 0.28, az: cur.az || 0 });
+    rig.margin = 0.12; rig.home_(cur.inputs.concat(cur.targets.map(t => t.c2w)).map(c => [c[3], c[7], c[11]]), { dist: 2.6, elev: 0.28, az: cur.az || 0 });
     highlight();
   }
-  function highlight() {
-    if (rig) frs.forEach((f, i) => rig.setColor(f, i === row ? 0xffffff : 0xf97316));
-    $$('.vl', grid).forEach((x, i) => x.classList.toggle('on', i === row));
-    $$('.cell', grid).forEach(x => x.classList.toggle('row-on', +x.dataset.r === row));
-    grid.classList.toggle('hov', row >= 0);
+  function highlight() { if (rig) frs.forEach((f, i) => rig.setColor(f, i === v ? 0xffffff : 0xf97316)); }
+  function setView(i) {
+    v = i;
+    const P = S + `paths/${cur.id}/`;
+    $$('button', views).forEach((b, j) => b.classList.toggle('on', j === i));
+    $$('img', rowEl).forEach(img => { img.src = P + `${img.dataset.m}${i}.jpg`; img.alt = `${img.dataset.name}, ${cur.label}: ${cur.targets[i].label}`; });
+    highlight();
   }
-  function setRow(i) { row = i; highlight(); }
   function load(sc) {
-    cur = sc; row = -1;
+    cur = sc;
     const P = S + `paths/${sc.id}/`;
     $$('.scene-chip', chips).forEach(c => c.classList.toggle('on', c.dataset.id === sc.id));
     const ins = $('#pathInputs'); ins.innerHTML = '';
     for (let i = 0; i < sc.n_in; i++) ins.append(h('img', { src: P + `in${i}.jpg`, alt: `input ${i + 1}`, loading: 'lazy' }));
-    $('#pathInLab').textContent = `${sc.n_in} input photos`;
+    $('#pathInLab').textContent = `${sc.n_in} input photos, the same for every method`;
     $('#pathNote').innerHTML = sc.note;
-    grid.innerHTML = '';
-    grid.append(h('div', { class: 'mh-pad' }));
-    METHODS.forEach(m => grid.append(h('div', { class: 'mh' + (m.id === 'ours' ? ' ours' : '') }, m.name, h('small', {}, m.sub))));
-    sc.targets.forEach((t, i) => {
-      grid.append(h('div', { class: 'vl', onmouseenter: () => setRow(i), onmouseleave: () => setRow(-1) }, h('b', {}, String(i + 1)), t.label));
-      METHODS.forEach(m => {
-        const img = h('img', { src: P + `${m.id}${i}.jpg`, alt: `${m.name}, view ${i + 1} (${t.label})`, loading: 'lazy' });
-        grid.append(h('div', { class: 'cell' + (m.id === 'ours' ? ' ours' : ''), 'data-r': i,
-          onmouseenter: () => setRow(i), onmouseleave: () => setRow(-1),
-          onclick: () => { const lb = $('#lightbox'); $('img', lb).src = img.src; lb.classList.add('show'); } }, img));
-      });
+    views.innerHTML = '';
+    sc.targets.forEach((t, i) => views.append(h('button', { onclick: () => setView(i) }, h('b', {}, String(i + 1)), t.label)));
+    rowEl.innerHTML = '';
+    METHODS.forEach(m => {
+      const img = h('img', { 'data-m': m.id, 'data-name': m.name, loading: 'lazy', alt: '' });
+      rowEl.append(h('figure', { class: m.id === 'ours' ? 'ours' : '' },
+        h('div', { class: 'ph', onclick: () => { const lb = $('#lightbox'); $('img', lb).src = img.src; lb.classList.add('show'); } }, img),
+        h('figcaption', {}, m.name, h('small', {}, m.sub))));
     });
-    build();
+    setView(0); build(); warm();
   }
   data.scenes.forEach(sc => chips.append(h('button', { class: 'scene-chip', 'data-id': sc.id, onclick: () => load(sc) },
     h('img', { src: S + `paths/${sc.id}/in0.jpg`, alt: '', loading: 'lazy' }), sc.label)));
@@ -562,7 +419,7 @@ async function initPaths() {
 /* ------------------------------------------------------------------ 04 results switch */
 function initResTabs() {
   const cap = {
-    sparse: 'DL3DV benchmark and unseen DL3DV-2K scenes. Move across the image to compare with the held-out ground truth; click a thumbnail or an orange camera to switch views.',
+    sparse: '',
     paths: 'Cameras sampled densely along a path, each frame generated on its own with no temporal model, still play back as a consistent video. Blue marks are the 6 inputs.',
     wild: 'Casual captures with COLMAP poses, including motion blur, over-exposure and aerial views.',
   };
@@ -603,9 +460,10 @@ async function initGallery() {
     });
   }
   function setTarget(i) {
+    const n = cur.targets.length; i = (i + n) % n;
     t = i; const G = S + `gallery/${cur.id}/`;
     $('#galGT').src = G + `gt${i}.jpg`; $('#galGen').src = G + `gen${i}.jpg`;
-    $$('#galTargets img').forEach((im, j) => im.classList.toggle('on', j === i));
+    $('#galCount').textContent = `view ${i + 1} / ${cur.targets.length}`;
     $('#galMeta').textContent = `scene ${cur.scene} · frame ${cur.targets[i]}`;
     $('#galSet').textContent = cur.set === '2k' ? 'DL3DV-2K (unseen)' : 'DL3DV benchmark';
     highlight();
@@ -613,15 +471,14 @@ async function initGallery() {
   function load(sc) {
     cur = sc; const G = S + `gallery/${sc.id}/`;
     $$('.scene-chip', chips).forEach(c => c.classList.toggle('on', c.dataset.id === sc.id));
-    const tg = $('#galTargets'), ins = $('#galInputs'); tg.innerHTML = ''; ins.innerHTML = '';
-    for (let i = 0; i < 6; i++) {
-      tg.append(h('img', { src: G + `gen${i}.jpg`, alt: `target ${i + 1}`, loading: 'lazy', onclick: () => setTarget(i) }));
-      ins.append(h('img', { src: G + `in${i}.jpg`, alt: `input ${i + 1}`, loading: 'lazy' }));
-    }
+    const ins = $('#galInputs'); ins.innerHTML = '';
+    for (let i = 0; i < 6; i++) ins.append(h('img', { src: G + `in${i}.jpg`, alt: `input ${i + 1}`, loading: 'lazy' }));
     setTarget(0); build();
   }
   data.forEach(sc => chips.append(h('button', { class: 'scene-chip', 'data-id': sc.id, onclick: () => load(sc) },
     h('img', { src: S + `gallery/${sc.id}/in0.jpg`, alt: '', loading: 'lazy' }), sc.label)));
+  $('#galPrev').addEventListener('click', () => setTarget(t - 1));
+  $('#galNext').addEventListener('click', () => setTarget(t + 1));
   load(data[0]);
 }
 
@@ -712,26 +569,28 @@ async function initTheater() {
 
 /* ------------------------------------------------------------------ 04 comparisons */
 function initCompare() {
-  const N = 6, scenes = $('#cmpScenes'), row = $('#cmpRow');
+  const N = 6, row = $('#cmpRow'), sel = $('#cmpM'), segS = $('#cmpS');
   const LABEL = { gt: 'Ground truth', ours: 'FrameCrafter', seva: 'SEVA', aether: 'Aether', lvsm: 'LVSM' };
+  const SHORT = { gt: 'GT', ours: 'Ours' };
   let sc = 1, t = 1, m = 'seva';
-  const wp = wipe($('#cmpWipe'), 50);
+  wipe($('#cmpWipe'), 50);
   function render() {
     const P = S + `compare/s${sc}_t${t}_`;
     $('#cmpBase').src = P + m + '.jpg'; $('#cmpOurs').src = P + 'ours.jpg';
     const bl = $('#cmpBaseLab'); bl.textContent = LABEL[m]; bl.className = 'lab l' + (m === 'gt' ? ' gt' : '');
+    sel.value = m;
     const ins = $('#cmpInputs'); ins.innerHTML = '';
     for (let k = 0; k < 6; k++) ins.append(h('img', { src: S + `compare/s${sc}_in${k}.jpg`, alt: `input ${k + 1}` }));
     row.innerHTML = '';
     ['gt', 'ours', 'seva', 'aether', 'lvsm'].forEach(k => row.append(h('figure', {
       class: (k === 'ours' ? 'ours ' : '') + (k === 'gt' ? 'gt ' : '') + (k === m ? 'on' : ''),
-      onclick: () => { if (k === 'ours') return; m = k; $$('#cmpM button').forEach(b => b.classList.toggle('on', b.dataset.m === k)); render(); }
-    }, h('img', { src: P + k + '.jpg', alt: LABEL[k] }), h('figcaption', {}, LABEL[k]))));
-    $$('button', scenes).forEach((b, i) => b.classList.toggle('on', i + 1 === sc));
+      onclick: () => { if (k !== 'ours') { m = k; render(); } }
+    }, h('img', { src: P + k + '.jpg', alt: LABEL[k] }), h('figcaption', {}, h('span', { class: 'lg' }, LABEL[k]), h('span', { class: 'sm' }, SHORT[k] || LABEL[k])))));
   }
-  for (let i = 1; i <= N; i++) scenes.append(h('button', { onclick: () => { sc = i; render(); } }, h('img', { src: S + `compare/s${i}_t1_gt.jpg`, alt: `scene ${i}` })));
+  for (let i = 1; i <= N; i++) segS.append(h('button', { 'data-s': i, class: i === 1 ? 'on' : '' }, String(i)));
+  segment(segS, d => { sc = +d.s; render(); });
   segment($('#cmpT'), d => { t = +d.t; render(); });
-  segment($('#cmpM'), d => { m = d.m; render(); });
+  sel.addEventListener('change', () => { m = sel.value; render(); });
   render();
 }
 
@@ -835,9 +694,9 @@ function hover(el, html) {
 function drawPermBars() {
   const svg = $('#permBars');
   const rows = [['First-view coordinates', '#a3a8b3', 15.67, 0.4730, 0.262, 0.0203], ['w/ temporal RoPE', '#5b7fd6', 15.61, 0.3106, 0.254, 0.0095], ['FrameCrafter', '#e8590c', 16.21, 0.0081, 0.224, 0.0003]];
-  const panels = [{ y: 0, title: 'PSNR std across orderings ↓', j: 3, mean: 2, max: 0.5, note: '38× lower than with temporal RoPE' },
-                  { y: 150, title: 'LPIPS std across orderings ↓', j: 5, mean: 4, max: 0.022, note: '32× lower than with temporal RoPE' }];
-  const L = 168, R = 440, bh = 20, gap = 30;
+  const panels = [{ y: 0, title: 'PSNR std across orderings ↓', j: 3, mean: 2, max: 0.5, note: '38× lower than temporal RoPE' },
+                  { y: 150, title: 'LPIPS std across orderings ↓', j: 5, mean: 4, max: 0.022, note: '32× lower than temporal RoPE' }];
+  const L = 164, R = 294, bh = 20, gap = 30;
   panels.forEach(pn => {
     const g = s('g', { transform: `translate(0,${pn.y})` });
     g.append(s('text', { x: 0, y: 16, 'font-size': 15, 'font-weight': 600, fill: '#15171b' }, pn.title));
@@ -849,7 +708,7 @@ function drawPermBars() {
       const bar = wd > 8 ? s('path', { d: `M${L} ${y} h${wd - 4} q4 0 4 4 v${bh - 8} q0 4 -4 4 h${-(wd - 4)}z`, fill: r[1] }) : s('rect', { x: L, y, width: wd, height: bh, fill: r[1] });
       g.append(bar);
       g.append(s('text', { x: L + wd + 8, y: y + bh / 2 + 5, 'font-size': 14, fill: '#15171b', 'font-family': 'JetBrains Mono' }, v.toFixed(4)));
-      const hit = s('rect', { x: 0, y: y - 5, width: 520, height: bh + 10, fill: 'transparent' });
+      const hit = s('rect', { x: 0, y: y - 5, width: 360, height: bh + 10, fill: 'transparent' });
       hover(hit, `<b>${r[0]}</b><br>std across 10 orderings: ${v.toFixed(4)}<br>mean ${pn.mean === 2 ? 'PSNR' : 'LPIPS'}: ${r[pn.mean]}`);
       g.append(hit);
     });
@@ -915,7 +774,6 @@ function initReel() {
 const safe = (name, fn) => { try { const r = fn(); if (r && r.catch) r.catch(e => console.error(name, e)); } catch (e) { console.error(name, e); } };
 safe('chrome', initChrome);
 safe('reel', initReel);
-safe('story', initStory);
 safe('vae', initVAE);
 safe('cams', initCams);
 safe('rope', initRoPE);
