@@ -236,29 +236,28 @@
 
   <div class="wrap">
     <h3 class="sub-h">Comparison with prior methods</h3>
-    <p class="sub-p">Against <b>SEVA</b> (image diffusion, ~80K training scenes), <b>Aether</b> (video diffusion) and <b>LVSM</b> (regression) on the DL3DV benchmark, 6 input views, center-cropped to 480×480. Move across the image to compare.</p>
+    <p class="sub-p">Against <b>SEVA</b> (image diffusion, ~80K training scenes), <b>Aether</b> (video diffusion) and <b>LVSM</b> (regression) on DL3DV and Mip-NeRF 360, 6 input views, center-cropped to 480×480. Move across the image to compare.</p>
   </div>
   <div class="wide mid">
     <div class="stage-panel rv">
-      <div class="cmp">
-        <div class="cmp-ctrl">
-          <label>scene <div class="seg dark" id="cmpS"></div></label>
-          <label>view <div class="seg dark" id="cmpT"><button data-t="1" class="on">1</button><button data-t="2">2</button></div></label>
-          <label>compare FrameCrafter with <span class="sel"><select id="cmpM" aria-label="baseline"><option value="seva">SEVA</option><option value="aether">Aether</option><option value="lvsm">LVSM</option><option value="gt">Ground truth</option></select></span></label>
+      <div class="cmp-ctrl"><span>scene</span><div class="seg dark" id="cmpS"></div></div>
+      <div class="viewer cmpv">
+        <div class="rig" id="cmpRig">
+          <div class="legend"><i style="background:#3b82f6"></i>input views<br><i style="background:#f97316"></i>target views</div>
+          <div class="hint">drag to orbit · click an orange camera</div>
         </div>
-        <div class="wipe" id="cmpWipe">
-          <img id="cmpBase" alt="baseline">
-          <div class="top"><img id="cmpOurs" alt="FrameCrafter"></div>
-          <div class="handle"></div>
-          <span class="lab l" id="cmpBaseLab">SEVA</span><span class="lab r ours">FrameCrafter</span>
-        </div>
-        <div class="cmp-ins">
-          <div class="row-label"><span class="k">6 input views</span></div>
-          <div class="cmp-inputs" id="cmpInputs"></div>
-        </div>
-        <div class="cmp-all">
-          <div class="row-label"><span>all methods</span></div>
-          <div class="cmp-row" id="cmpRow"></div>
+        <div class="mainview">
+          <div class="wipe" id="cmpWipe">
+            <img id="cmpBase" alt="baseline">
+            <div class="top"><img id="cmpOurs" alt="FrameCrafter"></div>
+            <div class="handle"></div>
+            <span class="lab l" id="cmpBaseLab">SEVA</span><span class="lab r ours">FrameCrafter</span>
+          </div>
+          <div class="tnav"><button id="cmpPrev" aria-label="previous view">‹</button><span class="q" id="cmpCount">view 1 / 2</span><button id="cmpNext" aria-label="next view">›</button>
+            <label class="vs"><span class="fc">FrameCrafter </span>vs <span class="sel"><select id="cmpM" aria-label="baseline"><option value="seva">SEVA</option><option value="aether">Aether</option><option value="lvsm">LVSM</option><option value="gt">Ground truth</option></select></span></label>
+          </div>
+          <div class="row-label"><span class="k">6 input views</span><span id="cmpSet"></span></div>
+          <div class="thumbs inputs" id="cmpInputs"></div>
         </div>
       </div>
     </div>

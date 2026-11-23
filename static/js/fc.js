@@ -568,30 +568,55 @@ async function initTheater() {
 }
 
 /* ------------------------------------------------------------------ 04 comparisons */
-function initCompare() {
-  const N = 6, row = $('#cmpRow'), sel = $('#cmpM'), segS = $('#cmpS');
-  const LABEL = { gt: 'Ground truth', ours: 'FrameCrafter', seva: 'SEVA', aether: 'Aether', lvsm: 'LVSM' };
-  const SHORT = { gt: 'GT', ours: 'Ours' };
-  let sc = 1, t = 1, m = 'seva';
+async function initCompare() {
+  const data = await getJSON(S + 'data/compare.json');
+  const sel = $('#cmpM'), segS = $('#cmpS'), rigEl = $('#cmpRig');
+  const LABEL = { gt: 'Ground truth', seva: 'SEVA', aether: 'Aether', lvsm: 'LVSM' };
+  let cur = data[0], t = 0, m = 'seva', rig = null, frs = [];
   wipe($('#cmpWipe'), 50);
+  const P = () => S + `compare/s${cur.n}_`;
+  onVisible(rigEl, async v => {
+    if (v && !rig) { rig = await makeRig(rigEl); if (rig) { rig.onPick = i => setView(i); build(); } }
+  }, { threshold: 0.01, rootMargin: '300px' });
+  function build() {
+    if (!rig) return;
+    rig.clear(); frs = [];
+    const nIn = cur.inputs.length;
+    cur.c2w.forEach((c, i) => {
+      const inp = i < nIn;
+      frs.push(rig.frustum(c, { fovx: cur.fov, fovy: cur.fov, size: 0.17, color: inp ? 0x3b82f6 : 0xf97316,
+        tex: P() + (inp ? `in${i}.jpg` : `t${i - nIn + 1}_ours.jpg`), opacity: inp ? 0.92 : 0.5, idx: inp ? null : i - nIn }));
+    });
+    rig.margin = 0.2; rig.home_(cur.c2w.map(c => [c[3], c[7], c[11]]), { dist: 2.35, elev: 0.55 });
+    highlight();
+  }
+  function highlight() {
+    if (!rig) return;
+    const nIn = cur.inputs.length;
+    frs.forEach((f, i) => { if (i >= nIn) { const on = i - nIn === t; rig.setColor(f, on ? 0xffffff : 0xf97316, on ? 1.0 : 0.38); } });
+  }
   function render() {
-    const P = S + `compare/s${sc}_t${t}_`;
-    $('#cmpBase').src = P + m + '.jpg'; $('#cmpOurs').src = P + 'ours.jpg';
+    const p = P() + `t${t + 1}_`;
+    $('#cmpBase').src = p + m + '.jpg'; $('#cmpOurs').src = p + 'ours.jpg';
     const bl = $('#cmpBaseLab'); bl.textContent = LABEL[m]; bl.className = 'lab l' + (m === 'gt' ? ' gt' : '');
     sel.value = m;
-    const ins = $('#cmpInputs'); ins.innerHTML = '';
-    for (let k = 0; k < 6; k++) ins.append(h('img', { src: S + `compare/s${sc}_in${k}.jpg`, alt: `input ${k + 1}` }));
-    row.innerHTML = '';
-    ['gt', 'ours', 'seva', 'aether', 'lvsm'].forEach(k => row.append(h('figure', {
-      class: (k === 'ours' ? 'ours ' : '') + (k === 'gt' ? 'gt ' : '') + (k === m ? 'on' : ''),
-      onclick: () => { if (k !== 'ours') { m = k; render(); } }
-    }, h('img', { src: P + k + '.jpg', alt: LABEL[k] }), h('figcaption', {}, h('span', { class: 'lg' }, LABEL[k]), h('span', { class: 'sm' }, SHORT[k] || LABEL[k])))));
+    $('#cmpCount').textContent = `view ${t + 1} / ${cur.targets.length}`;
+    highlight();
   }
-  for (let i = 1; i <= N; i++) segS.append(h('button', { 'data-s': i, class: i === 1 ? 'on' : '' }, String(i)));
-  segment(segS, d => { sc = +d.s; render(); });
-  segment($('#cmpT'), d => { t = +d.t; render(); });
+  function setView(i) { const n = cur.targets.length; t = (i + n) % n; render(); }
+  function load(k) {
+    cur = data[k]; t = 0;
+    $('#cmpSet').textContent = `${cur.label} · ${cur.dataset}`;
+    const ins = $('#cmpInputs'); ins.innerHTML = '';
+    for (let i = 0; i < cur.inputs.length; i++) ins.append(h('img', { src: P() + `in${i}.jpg`, alt: `input ${i + 1}` }));
+    render(); build();
+  }
+  data.forEach((d, k) => segS.append(h('button', { 'data-k': k, class: k === 0 ? 'on' : '', title: d.label }, String(d.n))));
+  segment(segS, d => load(+d.k));
+  $('#cmpPrev').onclick = () => setView(t - 1);
+  $('#cmpNext').onclick = () => setView(t + 1);
   sel.addEventListener('change', () => { m = sel.value; render(); });
-  render();
+  load(0);
 }
 
 /* ------------------------------------------------------------------ 04 quantitative table */
